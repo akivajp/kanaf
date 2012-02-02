@@ -1,0 +1,29 @@
+*start|スタート
+; ゲームタイトル画面
+
+[map layer='top' clear='true' visible=false]
+[map layer='top' image='top.png']
+
+[map
+  layer='top' image='menu_start.png' hover='menu_start_hover.png' cx=-120 by=-130
+  jump='game_start' file='000'
+]
+[map layer='top' image='menu_load.png'   hover='menu_load_hover.png'   cx=120 by=-130]
+[map layer='top' image='menu_config.png' hover='menu_config_hover.png' cx=-120 by=-50]
+[map
+  layer='top' image='menu_exit.png' hover='menu_exit_hover.png' cx=120 by=-50
+  jump='end'
+]
+[map layer='top' visible=true]
+[s]
+
+
+*end
+; ゲーム終了処理
+[map layer='top' visible=false]
+[image layer='bg' visible=false]
+[cm]
+終了します。
+[wait delay=1]
+[exit]
+
