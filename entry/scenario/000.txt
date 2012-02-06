@@ -145,7 +145,26 @@ Kanafは画像形式として、BMP、PNG、GIF、JPEG、TGAなどの読み込�
 お、おう。[p][cm]
 
 【Akiva】[r]
-書きかけ(吐血)
+書きかけ(吐血)[p][cm]
 
+[select]
+どうする?[r]
+[r]
+[link text='選択肢1' goto='select1'][r]
+[link text='選択肢2' goto='select2'][r]
+[s]
+
+*select1
+[cm]
+ほげ[l][r]
+[jump to='common']
+
+*select2
+[cm]
+ほげほげ[l][r]
+[jump to='common']
+
+*common
+共通メッセージ
 [s]
 

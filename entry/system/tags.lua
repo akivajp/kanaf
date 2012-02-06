@@ -9,14 +9,14 @@ wait_timer = lev.stop_watch()
 wait_until = 0
 
 -- list of immediate executing tags
-replacers = {'anchor', 'font', 'link', 'ruby'}
+immediate_tags = {'anchor', 'font', 'link', 'ruby', 'select'}
 -- list of tags separating blocks of drawing
-stoppers = {'br', 'clear', 'cm', 'r', 's', 'wait'}
+stoppers = {'clear', 'cm', 'r', 's', 'wait'}
 
-function activate(param)
-  local name = param.name or param.layer or ''
-  msg_activate(name)
-end
+--function activate(param)
+--  local name = param.name or param.layer or ''
+--  message_activate(name)
+--end
 
 function anchor(param)
   local text = param.text or param.txt or param[1]
@@ -27,16 +27,10 @@ function anchor(param)
     if href then
       on_click = function() lev.util.open(href) end
     end
-    msg_reserve_clickable('anchor', text, on_click)
+    message_reserve_clickable('anchor', text, on_click)
     kanaf.history = kanaf.history .. text
-    table.insert(kanaf.do_list, function() msg_show_next() end)
+    table.insert(kanaf.do_list, function() message_show_next() end)
   end
-end
-
-function br()
-  layers.msgfg.img:reserve_new_line()
-  layers.msgfg.img:draw_next()
-  kanaf.history = kanaf.history .. '[br]'
 end
 
 function call(param)
@@ -53,12 +47,12 @@ end
 
 function clear()
   kanaf.history = kanaf.history .. '\n'
-  msg_clear()
+  message_clear()
 end
 
 function cm()
   kanaf.history = kanaf.history .. '\n'
-  msg_clear()
+  message_clear()
 end
 
 function font(param)
@@ -119,16 +113,16 @@ end
 function image(param)
   local src = param.src or param.storage or nil
   local name = param.layer or param.name or nil
-  local x = param.x
+  local x = param.x or param.left or param.left_x
   local center_x = param.center_x or param.cx
-  local right_x = param.right_x or param.rx
-  local y = param.y
+  local right_x = param.right_x or param.right or param.rx
+  local y = param.y or param.top or param.top_y
   local center_y = param.center_y or param.cy
-  local bottom_y = param.bottom_y or param.by
+  local bottom_y = param.bottom_y or param.bottom or param.by
   local mode = param.mode or param.trans or param.effect or nil
   local duration = param.duration or param.time or 1
   local visible = param.visible
-  local alpha = param.alpha or param.a
+  local alpha = param.alpha or param.a or param.opacity
 
   local layer = layers_lookup[name]
   if not layer then
@@ -202,20 +196,26 @@ function l()
 end
 
 function link(param)
-  local src = param.src or param.source or param.storage
+  local src = param.src or param.storage or param.image
+  local text = param.text or param.string
   local file = param.filename or param.file or nil
-  local target = param.target
+  local target = param.target or param.goto
 
-  val = kanaf.seek_to('[endlink]')
-  if #val == 0 then return end
+  if not text then
+    print('warning: text is not given.')
+  end
 
   local on_click
   if target then
-    on_click = function() kanaf.load_scenario(file, target) end
+    on_click = function()
+      message_deactivate('select')
+      message_activate('message')
+      kanaf.load_scenario(file, target)
+    end
   end
-  msg_reserve_clickable('anchor', val, on_click)
+  message_reserve_clickable(text, on_click, nil)
 --  kanaf.history = kanaf.history .. text
-  table.insert(kanaf.do_list, function() msg_show_next() end)
+  table.insert(kanaf.do_list, function() message_show_next() end)
 end
 
 function logging(param)
@@ -232,17 +232,17 @@ function logging(param)
 end
 
 function map(param)
-  local clear = param.clear
+  local clear = param.clear or false
   local name = param.name or param.layer
-  local x = param.x
+  local x = param.x or param.left or param.left_x
   local center_x = param.center_x or param.cx
-  local right_x = param.right_x or param.rx
-  local y = param.y
+  local right_x = param.right_x or param.right or param.rx
+  local y = param.y or param.top or param.top_y
   local center_y = param.center_y or param.cy
-  local bottom_y = param.bottom_y or param.by
-  local src = param.src or param.image
+  local bottom_y = param.bottom_y or param.bottom or param.by
+  local src = param.src or param.image or param.storage
   local hover = param.hover or param.hover_image
-  local text = param.text
+  local text = param.text or param.string
   local visible = param.visible
   local call = param.call
   local jump = param.jump or param.goto
@@ -332,8 +332,9 @@ function p()
 end
 
 function r()
-  msg_reserve_new_line()
-  msg_show_next()
+  message_reserve_new_line()
+  message_show_next()
+  message_show_next()
   kanaf.history = kanaf.history .. '[r]'
 end
 
@@ -342,14 +343,63 @@ function ruby(param)
   if text then
     local ch = tostring(kanaf.buffer:index(0))
     kanaf.buffer = kanaf.buffer:sub(1)
-    msg_reserve_word(ch, text)
+    message_reserve_word(ch, text)
     kanaf.history = kanaf.history .. string.format('[ruby text="%s"]%s', text, ch)
-    table.insert(kanaf.do_list, function() msg_show_next() end)
+    table.insert(kanaf.do_list, function() message_show_next() end)
   end
 end
 
+function sound(param)
+  local src = param.src or param.source or param.storage or param.file
+  local slot = param.slot or 0
+  local mode = param.mode or param.command
+  local repeating = param['repeat'] or param.repeating or param.loop or false
+
+  if not mixer then
+    print('warning: mixer is not initialized')
+    return false
+  end
+
+  local path = nil
+  if src then
+    path = lev.package.resolve(src)
+    path = path or lev.package.resolve(src .. '.ogg')
+    path = path or lev.package.resolve(src .. '.wav')
+    if (not path) then
+      print(string.format('warning: sound file "%s" is not found', src))
+      return false
+    end
+  end
+
+  if slot == 0 then
+    if not src then
+      print('please specify sound source file')
+      return false
+    end
+    mixer:slot(0):play(path)
+    return true
+  end
+
+  if mode == 'load' then
+    mixer:slot(slot):load(path)
+  elseif mode == 'open' then
+    mixer:slot(slot):open(path)
+  elseif mode == 'pause' then
+    mixer:slot(slot):pause()
+  elseif mode == 'play' then
+    if path then
+      mixer:slot(slot):play(path, repeating)
+    else
+      mixer:slot(slot):play(repeating)
+    end
+  elseif mode == 'stop' then
+    mixer:slot(slot):pause()
+  end
+  return true
+end
+
 function wait(param)
-  local delay = param.delay or param.duration or param[1] or 1
+  local delay = param.time or param.delay or param.duration or param[1] or 1
   delay = tonumber(delay)
   if delay then
     wait_timer:start(0)
@@ -362,5 +412,11 @@ end
 function s()
   kanaf.key_pressed = false
   kanaf.status = 'stop'
+end
+
+function select()
+  message_deactivate('message')
+  message_activate('select')
+  message_clear()
 end
 

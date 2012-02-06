@@ -14,6 +14,7 @@ lev.package.clear_search()
 lev.package.add_search('')
 lev.package.add_search('image')
 lev.package.add_search('scenario')
+lev.package.add_search('sound')
 lev.package.add_search('system')
 
 -- Kanaf Module Requirements
@@ -26,7 +27,7 @@ lev.require 'layers'
 -- Initialize
 
 system = lev.system()
---mixer = system:mixer()
+mixer = system:mixer()
 
 -- Configuration
 conf = conf or {}
@@ -39,16 +40,16 @@ conf.font_size = 16
 conf.first_load = 'start'
 conf.frame_h = 480
 conf.frame_w = 640
-conf.msg_x = 15
-conf.msg_y = 380
-conf.msg_w = 600
-conf.msg_h = 90
+conf.message_x = 15
+conf.message_y = 380
+conf.message_w = 600
+conf.message_h = 90
 conf.num_layers = 5
 conf.save_dir = 'savedata'
 conf.save_game = 'log'
 conf.save_system = 'system'
-conf.sel_x = 15
-conf.sel_y = 10
+conf.select_x = 15
+conf.select_y = 10
 conf.wait_line_icon = 'wait_line.png'
 conf.wait_page_icon = 'wait_page.png'
 
@@ -75,27 +76,27 @@ for i = 1, conf.num_layers do
 end
 -- message background
 layers_add(lev.image.create(conf.frame_w, conf.frame_h),
-           {name = 'msg_bg', texture = true, msg = true})
-layers_lookup.msg_bg.img:fill_rect(10, 375, conf.frame_w - 20, 95, lev.prim.color(0, 0, 255, 128))
+           {name = 'message_bg', alias='msg_bg', texture = true})
+layers_lookup.message_bg.img:fill_rect(10, 375, conf.frame_w - 20, 95, lev.prim.color(0, 0, 255, 128))
 -- message foreground
 layers_add(lev.image.layout(conf.frame_w - 20),
-           {name = 'msg_fg', x = conf.msg_x, y = conf.msg_y, texture = true, msg = true})
-layers_lookup.msg_fg.img.font.size = conf.font_size
-layers_lookup.msg_fg.img.color = conf.fg_color or white
+           {name = 'message_fg', alias='msg_fg', x = conf.message_x, y = conf.message_y, texture = true})
+layers_lookup.message_fg.img.font.size = conf.font_size
+layers_lookup.message_fg.img.color = conf.fg_color or white
 -- selection background
 layers_add(lev.image.create(conf.frame_w, conf.frame_h),
-           {name = 'sel_bg', texture = true, msg = true})
-layers_lookup.sel_bg.img:fill_rect(10, 5, conf.frame_w - 20, conf.frame_h - 10, lev.prim.color(200, 0, 255, 128))
+           {name = 'select_bg', alias='sel_bg', texture = true})
+layers_lookup.select_bg.img:fill_rect(10, 5, conf.frame_w - 20, conf.frame_h - 10, lev.prim.color(200, 0, 255, 128))
 -- selection foreground
 layers_add(lev.image.layout(conf.frame_w - 10),
-           {name = 'sel_fg', x = conf.sel_x, y = conf.sel_y, texture = true, msg = true})
-layers_lookup.sel_fg.img.font.size = conf.font_size
-layers_lookup.sel_fg.img.color = conf.fg_color or white
+           {name = 'select_fg', alias='sel_fg', x = conf.select_x, y = conf.select_y, texture = true})
+layers_lookup.select_fg.img.font.size = conf.font_size
+layers_lookup.select_fg.img.color = conf.fg_color or white
 -- top level map
 layers_add(lev.image.map(),
            {name = 'top', x = 0, y = 0, texture = true})
-msg_activate('msg')
---msg_activate('sel')
+message_activate('message')
+--message_activate('select')
 
 -- wait line icon
 local icon_path = lev.package.resolve(conf.wait_line_icon)
@@ -207,7 +208,7 @@ system:run()
 kanaf.exit()
 kanaf.save_game()
 
-print()
-print(log.history)
+--print()
+--print(log.history)
 system:close()
 

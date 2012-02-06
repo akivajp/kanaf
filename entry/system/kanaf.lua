@@ -30,9 +30,9 @@ function call(filename, target)
   end
   local real_file
   local found = lev.package.resolve(filename)
-              or lev.package.resolve(filename .. '.lyl')
+              or lev.package.resolve(filename .. '.knf')
               or lev.package.resolve(filename .. '.txt')
-              or error(string.format('Neither %s.lyl nor %s.txt is not found', filename, filename))
+              or error(string.format('Neither %s.knf nor %s.txt is not found', filename, filename))
 
   local infile = io.open(tostring(found), 'r')
   content = infile:read('*a')
@@ -124,8 +124,24 @@ function load_scenario(filename, target)
               or error(string.format('Neither %s.lyl nor %s.txt is not found', filename, filename))
 
   local infile = io.open(tostring(found), 'r')
-  content = infile:read('*a')
-  buffer = lev.string.unicode(content)
+  local con = infile:read('*a')
+  if target then
+--print('FINDING:', target)
+    local pos  = con:find(string.format('^%%*%s|', target))
+    pos = pos or con:find(string.format('^%%*%s\r?\n', target))
+    pos = pos or con:find(string.format('\n%%*%s|', target))
+    pos = pos or con:find(string.format('\n%%*%s\r?\n', target))
+    if pos then
+      buffer = lev.string.unicode(con:sub(pos))
+    else
+      print(string.format('error: label "%s" is not found on file "%s"', target, filename))
+      return false
+    end
+  else
+    buffer = lev.string.unicode(con)
+  end
+
+  content = con
   key_pressed = false
   if log.logging == false then
     logging = false
@@ -138,16 +154,6 @@ function load_scenario(filename, target)
   history = history or ''
 
   log.filename = filename
-  if target then
---print('FINDING:', target)
-    local pos = content:find(string.format('^%%*%s|', target))
-    pos = pos or content:find(string.format('^%%*%s\r?\n', target))
-    pos = pos or content:find(string.format('\n%%*%s|', target))
-    pos = pos or content:find(string.format('\n%%*%s\r?\n', target))
-    if pos then
-      buffer = lev.string.unicode(content:sub(pos))
-    end
-  end
   return true
 end
 
@@ -179,14 +185,77 @@ function load_list()
         local f = loadstring(code)
         if f then f() end
       else
-        local tag_name = tag:match('^%s*([^%s]+)') or ''
-        local tag_body = tag:match('^%s*[^%s]+[%s]+(.*)$')
+        local tag_name = tag:match('^%s*([^%s,]+)') or ''
+        local tag_body = tag:match('^%s*[^%s,]+[%s,]+(.*)$')
         local params = {}
         if tag_body then
-          local params_str = tag_body:gsub('%s+', ',')
-          if params_str then params_str = params_str:gsub('%,+', ',') end
-          if params_str then params_str = params_str:gsub('%,?%=%,?', '=') end
+          local params_str = ''
+          while #tag_body > 0 do
+--print('TAG BODY: ', tag_body)
+            tag_body = tag_body:gsub('^[%s,]+', '')
+            if tag_body:find('^%w') then
+              -- word is given
+              local pos1, pos2 = tag_body:find('^%w+')
+              params_str = params_str .. tag_body:sub(1, pos2)
+              tag_body = tag_body:sub(pos2 + 1)
+              local pos1, pos2 = tag_body:find('^%s*%=%s*')
+              if pos1 then
+                -- "property =' is found
+                params_str = params_str .. '='
+                tag_body = tag_body:sub(pos2 + 1)
+              else
+                -- "param [property]" is found
+                params_str = params_str .. ','
+              end
+            elseif tag_body:find('^%(') then
+              -- "(expression)" is found
+              local pos1, pos2 = tag_body:find('^%b()')
+              if pos1 then
+                params_str = params_str .. tag_body:sub(1, pos2) .. ','
+                tag_body = tag_body:sub(pos2 + 1)
+              else
+                print("warning: no right paren ')' correspoinding with left paren '('")
+                break
+              end
+            elseif tag_body:find('^"') then
+              -- "string" is found 
+              local pos1, pos2 = tag_body:find('[^%"]%"')
+              if pos2 then
+                params_str = params_str .. tag_body:sub(1, pos2) .. ','
+                tag_body = tag_body:sub(pos2 + 1)
+              else
+                print([[warning: no right double quotation '"' correspoinding with the left]])
+                break
+              end
+            elseif tag_body:find("^'") then
+              -- 'string' is found
+              local pos1, pos2 = tag_body:find("[^%']%'")
+              if pos2 then
+                params_str = params_str .. tag_body:sub(1, pos2) .. ','
+                tag_body = tag_body:sub(pos2 + 1)
+              else
+                print([[warning: no right single quotation (') correspoinding with the left]])
+                break
+              end
+            else
+              -- other expression is found
+              local pos1, pos2 = tag_body:find("[%s,]+")
+              if pos1 then
+                -- "param ," form is found
+                params_str = params_str .. tag_body:sub(1, pos1-1) .. ','
+                tag_body = tag_body:sub(pos2 + 1)
+              else
+                -- "param$" form is found
+                params_str = params_str .. tag_body
+                break
+              end
+            end
+          end
+--          local params_str = tag_body:gsub('%s+', ',')
+--          if params_str then params_str = params_str:gsub('%,+', ',') end
+--          if params_str then params_str = params_str:gsub('%,?%=%,?', '=') end
           if params_str then
+--print('PARAMS: ', params_str)
             local f = loadstring(string.format('return {%s}', params_str))
             if f then
               params = f() or {}
@@ -196,7 +265,7 @@ function load_list()
 
         if tags[tag_name] then
           local done = false
-          for i, j in pairs(tags.replacers) do
+          for i, j in pairs(tags.immediate_tags) do
             if j == tag_name then
               tags[tag_name](params)
               done = true
@@ -220,9 +289,11 @@ function load_list()
     elseif ch == '*' and new_line then
       -- scene setting
       local line = tostring(seek_to_endl())
-      local label = line:match('%*(%w+)')
-      local scene  = line:match('%*%w+|(.*)')
-      if scene and #scene > 0 then
+--      local label = line:match('%*(%w+)')
+      local label = line:match('%*([^|]+)|?')
+--      local scene  = line:match('%*%w+|(.*)')
+      local scene  = line:match('%*[^|]|(.*)')
+      if label and scene and #scene > 0 then
 --print('SCENE:', log.label, log.scene)
         log.label = label
         log.scene = scene
@@ -240,9 +311,9 @@ function load_list()
       -- escaping code
       buffer = buffer:sub(1)
       ch = tostring(buffer:index(0))
-      msg_reserve_word(ch)
+      message_reserve_word(ch)
       local f = function()
-        msg_show_next()
+        message_show_next()
         screen.redraw()
       end
       table.insert(do_list, f)
@@ -252,10 +323,10 @@ function load_list()
       end
     else
       -- ordinal character
-      msg_reserve_word(ch)
+      message_reserve_word(ch)
 --print('RESERVED', ch)
       local f = function()
-        msg_show_next()
+        message_show_next()
 --print('SHOW_NEXT')
         screen.redraw()
       end
