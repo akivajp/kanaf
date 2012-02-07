@@ -3,9 +3,9 @@ require 'lev.package'
 require 'lev.string'
 require 'lev.util'
 
-lev.require 'tags'
+lev.require 'system/tags'
 
--- status variables
+-- record variables
 log = { }
 sys = { }
 tmp = { }
@@ -101,38 +101,28 @@ function kanaf.get_log(id)
   if f then
     return f()
   else
-    return { }
+    return false
   end
 end
 
 function kanaf.get_log_date(id)
-  return kanaf.get_log(id).date
+  local t = kanaf.get_log(id) or { }
+  return t.date
 end
 
-function kanaf.get_log_image(id, w, h)
-  lev.fs.mkdir(conf.save_dir, true)
+function kanaf.get_log_image(id)
   local suffix = ''
   if id then suffix = '_'..id end
-  local path = conf.save_dir .. '/' .. conf.save_log .. suffix .. '.png'
-  local img = lev.image.load(path)
-  if not w or not h then
-    return img
-  else
-    return img:resize(w, h)
-  end
+  return conf.save_dir .. '/' .. conf.save_log .. suffix .. '.png'
 end
 
 function kanaf.get_log_scene(id)
-  return kanaf.get_log(id).scene
+  local t = kanaf.get_log(id) or { }
+  return tostring(t.scene)
 end
 
 -- init the data
 function kanaf.init()
-  -- record variables
-  log = { }
-  sys = { }
-  tmp = { }
-
   -- state variables
   kanaf.call_stack = { }
   kanaf.history = ''
@@ -151,7 +141,6 @@ function kanaf.init()
   current = kanaf.current
 
   kanaf.load_system()
---  kanaf.load_log()
   kanaf.load_scenario(conf.first_load)
 end
 
@@ -199,6 +188,7 @@ function kanaf.load_log(id)
   else
     log = { }
   end
+--  kanaf.init()
   kanaf.history = log.history or ''
   kanaf.logging = log.logging or false
 --print('LOADING', log.filename, log.label, log.scene)
@@ -332,7 +322,10 @@ end
 function kanaf.proc_token()
   local ch = tostring(current.buffer:index(0))
 --print('CH:', ch)
-  if #ch == 0 then return true end
+  if #ch == 0 then
+    current.status = 'stop'
+    return true
+  end
   if ch == '[' then
     current.new_line = false
     local tag_name, params = kanaf.parse_tag()
@@ -353,6 +346,8 @@ function kanaf.proc_token()
       log.scene = scene
       log.history = kanaf.history
       log.logging = kanaf.logging
+      log.filename = current.filename
+      kanaf.save_system()
 --print('SCENE:', log.label, log.scene)
     end
   elseif ch == '\n' or ch == '\r' then
@@ -402,14 +397,17 @@ function kanaf.ret()
   current = kanaf.current
 end
 
-function kanaf.save_log(id)
+function kanaf.save_log(id, w, h)
   local suffix = ''
   if id then suffix = '_'..id end
   log.date = os.date('%Y/%m/%d %H:%M:%S')
   local file = io.open(conf.save_dir .. '/' .. conf.save_log .. suffix .. '.lua', 'w')
   file:write('return ' .. lev.util.serialize(log) .. '\n')
   file:close()
-  local img = screen.screen_shot
+  local img = kanaf.thumbnail
+  if w and h then
+    img = img:resize(w, h)
+  end
   if img then
     img:save(conf.save_dir .. '/' .. conf.save_log .. suffix .. '.png')
   end

@@ -50,6 +50,8 @@ conf.save_log = 'log'
 conf.save_system = 'system'
 conf.select_x = 15
 conf.select_y = 10
+conf.thumb_w = 128
+conf.thumb_h = 96
 conf.wait_line_icon = 'wait_line.png'
 conf.wait_page_icon = 'wait_page.png'
 
@@ -251,7 +253,7 @@ end
 system:run()
 
 kanaf.exit()
-kanaf.save_log()
+--kanaf.save_log(nil, 128, 96)
 
 --print()
 --print(log.history)

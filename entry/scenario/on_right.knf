@@ -4,14 +4,27 @@
 
 *sub_right
 ; 右クリック処理
-[set event='on_left_down'  jump='sub_right_end']
+; スクリーンショットを撮る
+[screenshot]
+[jump to="sub_right_main"]
+
+*sub_right_main
+; メイン処理
+; [set event='on_left_down' jump='sub_right_end']
 [set event='on_right_down' jump='sub_right_end']
+[map layer="right" create visible]
+[map layer="right" image="bg_side" rx=-20 cy=0 alpha=200]
+[map layer="right" image="menu_save" hover_image="menu_save_hover"
+ rx=-90 y=100 call="sub_save" file="on_save"]
+[map layer="right" image="menu_load" hover_image="menu_load_hover"
+ rx=-90 y=160 call="sub_load" file="on_load"]
 [image layer='active' visible=false]
 [s]
 
 *sub_right_end
-[set event='on_left_down' reset]
-[set event='on_right_down' call='sub_right']
+; [set event='on_left_down' reset]
+; [set event='on_right_down' call='sub_right']
+[map layer="right" delete]
 [image layer='active' visible=true]
 [return]
 

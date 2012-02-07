@@ -9,6 +9,7 @@ end
 
 function layers_add(img, t)
   if not (t and t.name) then return false end
+  if layers_lookup[t.name] then return false end
 --print('LAYER ADD: ', t.name)
   local layer = { }
   table.insert(layers, layer)
@@ -49,7 +50,7 @@ end
 
 function layers_set_bg(img, t)
   if not (t and layers_lookup[t.name]) then return false end
-print('SET BG', t.name)
+--print('SET BG', t.name)
   local fg = layers_lookup[t.name]
   local bg = { }
   bg.fg = fg

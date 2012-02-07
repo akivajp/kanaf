@@ -1,0 +1,67 @@
+; ロード画面
+
+*sub_save
+; ロード画面を呼び出すサブルーチン
+[set event="on_right_down" jump="sub_save_end"]
+[map layer="save" create visible]
+[map layer="save" image="bg_save" cx=0 cy=0 alpha=200]
+[map layer="save" image="menu_prev" hover_image="menu_prev_hover"
+ rx=-50 y=30 jump="sub_save_end"]
+; ログ番号1
+[map layer="save" image="frame_base" hover_image="frame_hover"
+ cx=0 cy=-60 call="sub_save_log1"]
+[map layer="save" cond=kanaf.get_log(1)
+ image=kanaf.get_log_image(1) x=100 cy=-60]
+[map layer="save" cond=kanaf.get_log(1)
+ text=kanaf.get_log_scene(1) x=230 cy=-80]
+[map layer="save" cond=kanaf.get_log(1)
+ text=kanaf.get_log_date(1) x=230 cy=-30]
+; ログ番号2
+[map layer="save" image="frame_base" hover_image="frame_hover"
+ cx=0 cy=100 call="sub_save_log2"]
+[map layer="save" cond=kanaf.get_log(2)
+ image=kanaf.get_log_image(2) x=100 cy=100]
+[map layer="save" cond=kanaf.get_log(2)
+ text=kanaf.get_log_scene(2) x=230 cy=80]
+[map layer="save" cond=kanaf.get_log(2)
+ text=kanaf.get_log_date(2) x=230 cy=130]
+[s]
+
+*sub_save_end
+; [set event="on_right_down" call="sub_right" file="on_right"]
+[map layer="save" delete]
+[return]
+
+*sub_save_yes
+[map layer="save_pop" delete]
+[save log id=tmp.save_id]
+[eval code="tmp.save_id = nil"]
+[jump to="sub_save"]
+
+*sub_save_no
+[map layer="save_pop" delete]
+[return]
+
+*sub_save_pop
+[set event="on_right_down" jump="sub_save_no"]
+[map layer="save_pop" create visible]
+[map layer="save_pop" image="bg_pop" cx=0 cy=0 alpha=200]
+[map layer="save_pop" image="menu_on_save" cx=0 cy=-75]
+[map layer="save_pop" image="menu_yes" hover_image="menu_yes_hover"
+ cx=-100 cy=50 jump="sub_save_yes"]
+[map layer="save_pop" image="menu_no" hover_image="menu_no_hover"
+ cx=100 cy=50 jump="sub_save_no"]
+[s]
+
+*sub_save_log1
+; ログ番号1をロード
+[eval code="tmp.save_id=1"]
+[jump to="sub_save_pop"]
+[s]
+
+*sub_save_log2
+; ログ番号2をロード
+[eval code="tmp.save_id=2"]
+[jump to="sub_save_pop"]
+[s]
+

@@ -266,6 +266,19 @@ function tags.link(param)
   end
 end
 
+function tags.load(param)
+  local id = param.id or param.name
+  local log = param.log or param.game
+
+  if log then
+    if not id then
+      print('error: id is not given')
+      return false
+    end
+    kanaf.load_log(id)
+  end
+end
+
 function tags.logging(param)
   local enable = param.on or param.enable
   local disable = param.off or param.disable
@@ -279,7 +292,7 @@ function tags.logging(param)
 end
 
 function tags.map(param)
-  local clear = param.clear or false
+  local clear = param.clear or param.reset
   local name = param.name or param.layer
   local x = param.x or param.left or param.left_x or 0
   local center_x = param.center_x or param.cx
@@ -297,6 +310,8 @@ function tags.map(param)
   local file = param.file or param.filename
   local create = param.create
   local delete = param.delete
+
+--  file = file or kanaf.current.file
 
   if create then
     layers_add(lev.image.map(),
@@ -372,6 +387,7 @@ function tags.map(param)
         return false
       end
 
+      file = file or kanaf.current.filename
       local on_lclick = nil
       if call then
         on_lclick = function()
@@ -441,6 +457,23 @@ function tags.s(param)
   kanaf.key_pressed = false
   kanaf.current.status = 'stop'
 --  kanaf.current.buffer = '[s]' .. kanaf.current.buffer
+end
+
+function tags.save(param)
+  local id = param.id or param.name
+  local log = param.log or param.game
+
+  if log then
+    if not id then
+      print('error: id is not given')
+      return false
+    end
+    kanaf.save_log(id, conf.thumb_w, conf.thumb_h)
+  end
+end
+
+function tags.screenshot(param)
+  kanaf.thumbnail = screen.screen_shot
 end
 
 function tags.select(param)
