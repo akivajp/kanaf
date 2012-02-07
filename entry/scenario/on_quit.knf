@@ -1,0 +1,28 @@
+;
+; ゲーム終了処理
+;
+
+*sub_quit
+; ゲーム終了処理
+[set event='on_quit' jump='sub_quit_no']
+[set event='on_right_down' jump='sub_quit_no']
+[map layer='quit' create visible]
+[map layer='quit' image='bg_quit' cx=0 cy=0 alpha=200]
+[map layer='quit' image='menu_on_quit' cx=0 cy=-75]
+[map layer='quit' image='menu_yes.png' hover='menu_yes_hover.png' cx=-100 cy=50
+ jump='sub_quit_yes']
+[map layer='quit' image='menu_no.png'  hover='menu_no_hover.png'  cx=100  cy=50
+ jump='sub_quit_no']
+[s]
+
+*sub_quit_yes
+; ゲーム終了
+[exit]
+
+*sub_quit_no
+; ゲーム続行
+[set event='on_quit' call='sub_quit']
+[set event="on_right_down" call="sub_right" file="on_right"]
+[map layer='quit' delete]
+[return]
+

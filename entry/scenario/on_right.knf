@@ -1,0 +1,17 @@
+;
+; 右クリック処理
+;
+
+*sub_right
+; 右クリック処理
+[set event='on_left_down'  jump='sub_right_end']
+[set event='on_right_down' jump='sub_right_end']
+[image layer='active' visible=false]
+[s]
+
+*sub_right_end
+[set event='on_left_down' reset]
+[set event='on_right_down' call='sub_right']
+[image layer='active' visible=true]
+[return]
+

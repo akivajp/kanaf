@@ -1,0 +1,21 @@
+; ロード画面
+
+*sub_load
+; ロード画面を呼び出すサブルーチン
+[set event="on_right_down" jump="sub_load_end"]
+[map layer="load" create visible]
+[map layer="load" image="bg_load" cx=0 cy=0 alpha=200]
+[map layer="load" image="menu_prev" hover_image="menu_prev_hover"
+ rx=-30 y=30 jump="sub_load_end"]
+[map layer="load" image="frame_base" cx=0 cy=0]
+[map layer="load" cond=kanaf.get_log_date()
+ text=kanaf.get_log_date() cx=0 cy=0]
+[s]
+[map layer="load" cond=kanaf.get_log_date()
+ image=kanaf.get_log_image(nil) cx=0 cy=0]
+
+*sub_load_end
+[set event="on_right_down" call="sub_right" file="on_right"]
+[map layer="load" delete]
+[return]
+

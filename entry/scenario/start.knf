@@ -1,0 +1,36 @@
+*init
+; 初期化処理
+[set event='on_quit'       call='sub_quit'  file="on_quit"]
+; [set event='on_right_down' call='sub_right' file="on_right"]
+
+*menu
+; ゲームタイトル画面
+
+[map layer='title' create visible=false]
+[map layer='title' image='top']
+
+[map
+  layer='title' image='menu_start' hover='menu_start_hover' cx=-120 by=-130
+  jump='start'
+]
+[map
+  layer='title' image='menu_load' hover='menu_load_hover' cx=120 by=-130
+  call='sub_load' file='on_load'
+]
+[map
+  layer='title' image='menu_config' hover='menu_config_hover' cx=-120 by=-50
+  call='sub_config' file='on_config'
+]
+[map
+  layer='title' image='menu_exit' hover='menu_exit_hover' cx=120 by=-50
+  call='sub_quit' file='on_quit'
+]
+[map layer='title' visible]
+[s]
+
+*start
+; ゲーム開始
+[set event='on_right_down' call='sub_right' file="on_right"]
+[map layer='title' delete]
+[jump to='game_start' file='000']
+

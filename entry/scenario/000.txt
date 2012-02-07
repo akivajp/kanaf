@@ -1,12 +1,11 @@
 *game_start|ゲーム開始
 ; ゲーム開始
-[map layer='top' visible=false]
 [logging on]
 
 [image layer='1' src='fg_aqua001' visible=true by=0 cx=0]
 【変な人】[r]
 やぁ、はじめまして。[r]
-スクリプトシステム[font color='red']Kanaf[font reset=true]を開発をしている[font color='red']Akiva[font reset=true]と申します。[p][cm]
+スクリプトシステム[font color='red']Kanaf[font reset]の開発をしている[font color='red']Akiva[font reset]と申します。[p][cm]
 
 この度は、機能紹介デモをダウンロード頂き、まことにありがとうございます。[r]
 まだまだ開発途中段階で、未実装の部分や仕様が変更される部分が多いに予想されますが、
@@ -18,24 +17,24 @@
 
 
 *outline|概要
-[image layer='1' src='fg_aqua001' visible=true by=0 cx=0]
+[image layer='1' src='fg_aqua001' by=0 cx=0 visible]
 
 【Akiva】[r]
 まず根本的なところからいきましょう。[p][cm]
 
-[image layer='1' src='fg_aqua001' visible=true by=0 cx=-100]
-[image layer='2' src='fg_green001' visible=true by=0 cx=100]
+[image layer='1' src='fg_aqua001'  by=0 cx=-100 visible]
+[image layer='2' src='fg_green001' by=0 cx=100  visible]
 
 【謎の質問者】[r]
-[font size=32]
+[font size=10]
 そもそもKanafって何やねん?[p][cm]
 
-[font reset=true]
+[font reset]
 【Akiva】[r]
 おや、これは謎の質問者さん。未確認生命体っぽいシルエットですね。[p][cm]
 
 【謎の質問者】[r]
-[font size=28]
+[font size=10]
 うっさい、お前に言われとうないわ。[r]
 っつうか描いたんお前やろ。[p][cm]
 
@@ -56,10 +55,10 @@ Kanaf(カナフ)とは、プログラミング等の知識を持たない人で�
 タグというのは、[font color='red']\[タグ名 属性名1=属性値1 属性名2=属性値2 ...\][font reset=true]といった形式のテキスト(ただし実際は英数字)のことで、 文章中にこれを埋め込むことで、改行や改ページ、 フォントサイズや画像表示といった様々な操作に指令を出すことができます。[p][cm]
 
 【謎の質問者】[r]
-[font size=28]
+[font size=10]
 え、そういうソフトって他にも既に出てるんちゃうの?[p][cm]
 
-[font reset=true]
+[font reset]
 【Akiva】[r]
 確かにその通り。
 ここではソフト名は申し上げませんが、既に似たようなソフトは随分多く作られています。[p][cm]
@@ -67,18 +66,18 @@ Kanaf(カナフ)とは、プログラミング等の知識を持たない人で�
 大部分は日本製で、優秀なソフトも多いですが、そのほとんどには共通の[font color='red']弱点[font reset=true]があります。[p][cm]
 
 【謎の質問者】[r]
-[font size=28]
+[font size=10]
 弱点?[p][cm]
 
-[font reset=true]
+[font reset]
 【Akiva】[r]
 その弱点とは、それらがWindowsでしか動作できないということです。[p][cm]
 
 【謎の質問者】[r]
-[font size=28]
+[font size=10]
 それってそんな問題なん? わいはWindowsしかつこうてへんで?[p][cm]
 
-[font reset=true]
+[font reset]
 【Akiva】[r]
 だって作品を作るなら少しでも多くの人に楽しんでもらいたいじゃない！[r]
 確かに未だパソコンなどの端末においてWindowsのシェアは圧倒的ですが、1割近くは他のOSですし、
@@ -132,26 +131,30 @@ Kanafは画像形式として、BMP、PNG、GIF、JPEG、TGAなどの読み込�
 なので、PNG形式の透過画像がそのまま使えるので最もオススメです。[r]
 逆に言うと、旧来のマスク画像による透過への対応は現状考慮されていません。[p][cm]
 
-
 *tags|主要タグ
 [image layer='bg' src='bg002' visible=true]
 [image layer='1' src='fg_aqua001' visible=true by=0 cx=-80 alpha=200]
 [image layer='2' src='fg_green001' visible=true by=0 cx=80 alpha=200]
 
 【Akiva】[r]
+[call target='sub1']
 もうめんどいので主要なタグ紹介をします。[p][cm]
 
 【質問者】[r]
+[call target='sub1']
 お、おう。[p][cm]
 
 【Akiva】[r]
 書きかけ(吐血)[p][cm]
 
-[select]
+[select][cm]
+[font bigger=true]
 どうする?[r]
 [r]
-[link text='選択肢1' goto='select1'][r]
-[link text='選択肢2' goto='select2'][r]
+・[link text='選択肢1' goto='select1'][r]
+[r]
+・[link text='選択肢2' goto='select2'][r]
+[font reset=true]
 [s]
 
 *select1
@@ -167,4 +170,11 @@ Kanafは画像形式として、BMP、PNG、GIF、JPEG、TGAなどの読み込�
 *common
 共通メッセージ
 [s]
+
+*sub1
+[cm]
+[eval code="tmp.xxx = (tmp.xxx or 0) + 1"]
+サブルーチン入りましたー。[l][r]
+[print text=tmp.xxx]回目ー!!![l][r]
+[return]
 

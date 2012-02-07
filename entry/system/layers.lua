@@ -8,9 +8,11 @@ function layers_init()
 end
 
 function layers_add(img, t)
+  if not (t and t.name) then return false end
+--print('LAYER ADD: ', t.name)
   local layer = { }
   table.insert(layers, layer)
-  local t = t or {}
+  layer.bg = t.bg or nil
   layer.compile = t.compile or false
   layer.img = img
   layer.texture = t.texture or t.texturize or false
@@ -28,24 +30,62 @@ function layers_add(img, t)
   end
 end
 
+function layers_delete(name)
+  local layer = layers_lookup[name]
+  if not layer then return false end
+
+  for i,j in pairs(layers) do
+    if j == layer then
+      table.remove(layers, i)
+    end
+  end
+  for i,j in pairs(layers_lookup) do
+    if j == layer then
+      layers_lookup[i] = nil
+    end
+  end
+  return true
+end
+
+function layers_set_bg(img, t)
+  if not (t and layers_lookup[t.name]) then return false end
+print('SET BG', t.name)
+  local fg = layers_lookup[t.name]
+  local bg = { }
+  bg.fg = fg
+  bg.compile = t.compile or false
+  bg.img = img
+  bg.texture = t.texture or t.texturize or false
+  bg.name = t.name or nil
+  bg.visible = t.visible or t.on or false
+  bg.x = t.x or 0
+  bg.y = t.y or 0
+  bg.alpha = t.alpha or 255
+  fg.bg = bg
+end
+
+function layers_get_top_visible()
+  for i = #layers,1,-1 do
+    local j = layers[i]
+    if j.img and j.visible then
+      return j
+    end
+  end
+  return nil
+end
+
 function message_activate(name)
   if not name then return end
-  for i, j in pairs(layers_lookup) do
-    if tostring(i):match('^' .. tostring(name)) then
-      j.visible = true
-      if j.img and j.img.type_name == 'lev.image.layout' then
-        layers_lookup.active = j
-      end
-    end
+  if layers_lookup[name] then
+    layers_lookup.active = layers_lookup[name]
+    layers_lookup.active.visible = true
   end
 end
 
 function message_deactivate(name)
   if not name then return end
-  for i, j in pairs(layers_lookup) do
-    if tostring(i):match('^' .. tostring(name)) then
-      j.visible = false
-    end
+  if layers_lookup[name] then
+    layers_lookup[name].visible = false
   end
 end
 
@@ -58,6 +98,12 @@ end
 function message_reserve_clickable(text, on_click, on_hover)
   if layers_lookup.active then
     layers_lookup.active.img:reserve_clickable(text, on_click, on_hover)
+  end
+end
+
+function message_reserve_clickable_image(img, img_hover, on_click, on_hover)
+  if layers_lookup.active then
+    layers_lookup.active.img:reserve_clickable(img, img_hover, on_click, on_hover)
   end
 end
 
