@@ -1,30 +1,41 @@
-;
-; 右クリック処理
-;
+//
+// 右クリック処理
+//
 
-*sub_right
-; 右クリック処理
-; スクリーンショットを撮る
+#sub_right
+// 右クリック処理開始
+// スクリーンショットを撮る
 [screenshot]
-[jump to="sub_right_main"]
+// メイン処理へ
+[jump to="#sub_right_menu"]
 
-*sub_right_main
-; メイン処理
-; [set event='on_left_down' jump='sub_right_end']
-[set event='on_right_down' jump='sub_right_end']
-[map layer="right" create visible]
-[map layer="right" image="bg_side" rx=-20 cy=0 alpha=200]
-[map layer="right" image="menu_save" hover_image="menu_save_hover"
- rx=-90 y=100 call="sub_save" file="on_save"]
-[map layer="right" image="menu_load" hover_image="menu_load_hover"
- rx=-90 y=160 call="sub_load" file="on_load"]
-[image layer='active' visible=false]
+#sub_right_menu
+// メイン処理開始
+// 再度右クリックされた時に終了する設定
+[set event='on_right_down' jump='#sub_right_menu_end']
+// 初回起動時にセットアップ画面へ
+[call target="#sub_right_menu_setup" cond=(not layers.lookup.right_menu)]
+// メッセージ画面非表示
+[msg hide]
+// 右クリックメニュー表示
+[map layer="right_menu" show above]
 [s]
 
-*sub_right_end
-; [set event='on_left_down' reset]
-; [set event='on_right_down' call='sub_right']
-[map layer="right" delete]
-[image layer='active' visible=true]
+#sub_right_menu_end
+// 右クリックメニュー非表示
+[map layer="right_menu" hide]
+// メッセージ画面表示
+[msg show]
+[return]
+
+#sub_right_menu_setup
+// メニューレイアウト & 設定保存
+[map layer="right_menu" create]
+[map layer="right_menu" image="bg_side" cx=0 cy=0 alpha=200]
+[map layer="right_menu" image="menu_save" hover_image="menu_save_hover"
+ rx=-70 y=100 call="on_save#sub_save"]
+[map layer="right_menu" image="menu_load" hover_image="menu_load_hover"
+ rx=-70 y=160 call="on_load#sub_load"]
+[[ tmp.right_menu_setup = true ]]
 [return]
 

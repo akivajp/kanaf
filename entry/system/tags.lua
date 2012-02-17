@@ -7,11 +7,9 @@ tags = tags or { }
 
 tags.wait_timer = lev.stop_watch()
 tags.wait_until = 0
-
---function activate(param)
---  local name = param.name or param.layer or ''
---  message_activate(name)
---end
+tags.wait_slot = 0
+tags.controls = { 'else', 'elseif', 'endif', 'if' }
+tags.macros = { }
 
 function tags.anchor(param)
   local text = param.text or param.txt or param[1]
@@ -22,32 +20,127 @@ function tags.anchor(param)
     if href then
       on_click = function() lev.util.open(href) end
     end
-    message_reserve_clickable('anchor', text, on_click)
-    kanaf.history = kanaf.history .. text
-    message_show_next()
+    message.reserve_clickable('anchor', text, on_click)
+--    kanaf.history = kanaf.history .. text
+    backlog.add(text)
+    message.show_next()
+  end
+end
+
+function tags.backlog(param)
+  local show = param.show
+  local hide = param.hide
+  local src = param.src or param.bg_image or param.bg
+  local alpha = param.alpha or param.a or param.opaque
+  local seek_end = param.seek_end
+  local seek_init = param.seek_init
+  local seek_next = param.seek_next
+  local seek_prev = param.seek_prev
+
+  if not layers.lookup.backlog then
+    local img = lev.image.map()
+    layers.add(img, {name = 'backlog', texture = true})
+    layers.set_bg(nil, {name = 'backlog', texture = true, visible = true})
+  end
+
+  if seek_end then
+    backlog.seek_end()
+  elseif seek_init then
+    backlog.seek_init()
+  elseif seek_next then
+    backlog.seek_next()
+  elseif seek_prev then
+    backlog.seek_prev()
+  end
+
+  if show then
+    backlog.show()
+  elseif hide then
+    backlog.hide()
+  end
+
+  if src then
+    local path = lev.package.resolve(src) or
+                 lev.package.resolve(src .. '.png')
+    if not path then
+      local msg =
+        string.format('warning at %s : image "%s" is not found',
+                      kanaf.get_pos(), src)
+      lev.debug.print(msg)
+    end
+
+    local img = lev.image.load(path)
+    if img then
+      layers.lookup.backlog.bg.img = img
+    end
+  end
+
+  if alpha then
+    layers.lookup.backlog.bg.alpha = alpha
   end
 end
 
 function tags.call(param)
-  local file = param.storage or param.src or param.file
-  local target = param.target or param.name
+  local target = param.target or param.name or param.anchor
 
   if not target then
-    print('warning: target is not given')
+    local msg =
+      string.format('warning at %s : No target.', kanaf.get_pos())
+    lev.debug.print(msg)
     return false
   end
 
-  kanaf.call(file, target)
-end
-
-function tags.clear(param)
-  kanaf.history = kanaf.history .. '\n'
-  message_clear()
+  kanaf.call(target)
+  kanaf.current.args = param
+  args = param
 end
 
 function tags.cm(param)
-  kanaf.history = kanaf.history .. '\n'
-  message_clear()
+  backlog.new_page()
+  message.clear()
+end
+
+function tags.debug(param)
+  local enable = param.enable or param.start
+  local disable = param.disable or param.stop
+  local message = param.message or param.msg or param.text or
+                  param.txt or param.print or param.string or param.str
+
+  if enable or disable == false then
+    system:start_debug()
+  elseif disable or enable == false then
+    system:stop_debug()
+  end
+
+  if message then
+    local str = string.format('at %s : %s', kanaf.get_pos(), tostring(message))
+    lev.debug.print(str)
+    return true
+  end
+end
+
+tags['else'] = function(param)
+  local prop_if = param['if']
+
+  if prop_if then
+    return tags['if'](param)
+  end
+
+  return true
+end
+
+tags['elseif'] = function(param)
+  return tags['if'](param)
+end
+
+function tags.endif(param)
+  -- nothing to do
+  return true
+end
+
+function tags.endmacro(param)
+  -- nothing to do
+  return true
 end
 
 function tags.eval(param)
@@ -69,9 +162,16 @@ function tags.font(param)
   local size = param.size
   local reset = param.reset or param.clear or false
   local relative = param.relative or param.rel or true
-  local absolute = param.absolute or param.abs or false
+  local absolute = param.absolute or param.abs
   local bigger = param.bigger or param.big
   local smaller = param.smaller or param.small
+
+  local active = layers.lookup.active
+  if not active then
+    local msg = string.format('warning at %s : no message are activated', kanaf.get_pos())
+    lev.debug.print(msg)
+    return false
+  end
 
   if bigger then
     relative = true
@@ -79,13 +179,6 @@ function tags.font(param)
   elseif smaller then
     relative = true
     size = -2
-  end
-
-  if (not absolute) then
-    relative = true
-  end
-  if relative then
-    absolute = false
   end
 
   if type(color) == 'string' then
@@ -97,63 +190,74 @@ function tags.font(param)
   end
 
   if reset == true or reset == 'true' then
-    for i,j in ipairs(layers) do
-      if j.img and j.img.type_name == 'lev.image.layout' then
-        j.img.font.size = conf.font_size
-        j.img.fg_color = conf.fg_color
-      end
-    end
-  else
+    active.img.font.size = conf.font_size
+    active.img.fg_color = conf.fg_color
   end
 
   if size then
-    for i,j in ipairs(layers) do
-      if j.img and j.img.type_name == 'lev.image.layout' then
-        if relative == true then
-          j.img.font.size = j.img.font.size + size
-        else
-          j.img.font.size = size
-        end
-      end
+    if relative or absolute == false then
+      active.img.font.size = active.img.font.size + size
+    else
+      active.img.font.size = size
     end
   end
 
   if color then
-    for i,j in ipairs(layers) do
-      if j.img and j.img.type_name == 'lev.image.layout' then
-        j.img.fg_color = color
-      end
+    active.img.fg_color = color
+  end
+end
+
+tags['if'] = function(param)
+  local cond = param.cond or param.condition or param.value or param.val
+  local code = param.code or param.expression or param.expr or param.exp
+
+  if cond then
+    kanaf.skip_other_conditions()
+    return true
+  end
+
+  if code then
+    local f = loadstring(string.format('return %s', code))
+    if f and f() then
+      kanaf.skip_other_conditions()
+      return true
     end
   end
+
+  kanaf.seek_to_next_condition()
+  return true
 end
 
 function tags.image(param)
   local src = param.src or param.storage or nil
   local name = param.layer or param.name or nil
-  local x = param.x or param.left or param.left_x
-  local center_x = param.center_x or param.cx
-  local right_x = param.right_x or param.right or param.rx
+  local x = param.x
+  local lx = param.lx or param.left or param.left_x
+  local cx = param.cx or param.center_x
+  local rx = param.rx or param.right or  param.right_x
   local y = param.y or param.top or param.top_y
   local center_y = param.center_y or param.cy
   local bottom_y = param.bottom_y or param.bottom or param.by
   local mode = param.mode or param.trans or param.effect or nil
   local duration = param.duration or param.time or 1
-  local visible = param.visible
+  local show = param.show or param.visible
+  local hide = param.hide or param.unvisible
   local alpha = param.alpha or param.a or param.opacity
 
-  local layer = layers_lookup[name]
+  local layer = layers.lookup[name]
   if not layer then
     print(string.format('warning: layer "%s" is not found.', tostring(name)))
     return false
   end
 
   -- property settings
-  layer.x = x or layer.x
+  layer.x = lx or layer.x
   layer.y = y or layer.y
   layer.alpha = alpha or layer.alpha
-  if visible == true then
+
+  if show or hide == false then
     layer.visible = true
-  elseif visible == false then
+  elseif hide or show == false then
     layer.visible = false
   end
 
@@ -182,13 +286,17 @@ function tags.image(param)
     end
   end
 
+  -- center X positioning from left edge
+  if x and layer.img then
+    layer.x = x - (layer.img.w / 2)
+  end
   -- X positioning with centerized axis
-  if center_x and layer.img then
-    layer.x = (conf.frame_w - layer.img.w) / 2 + center_x
+  if cx and layer.img then
+    layer.x = (conf.frame_w - layer.img.w) / 2 + cx
   end
   -- X positioning from the right edge
-  if right_x and layer.img then
-    layer.x = conf.frame_w - layer.img.w + right_x
+  if rx and layer.img then
+    layer.x = conf.frame_w - layer.img.w + rx 
   end
   -- Y positioning with centerized axis
   if center_y and layer.img then
@@ -201,17 +309,16 @@ function tags.image(param)
 end
 
 function tags.jump(param)
-  local file = param.filename or param.file or param.storage
   local target = param.target or param.to
   if target then
-    kanaf.load_scenario(file, target)
+    kanaf.load_scenario(target)
   end
 end
 
 function tags.l(param)
   kanaf.key_pressed = false
   kanaf.current.status = 'wait_key'
-  layers_lookup.wait_line.visible = true
+  layers.lookup.wait_line.visible = true
 end
 
 function tags.link(param)
@@ -250,19 +357,19 @@ function tags.link(param)
   local on_click
   if target then
     on_click = function()
-      message_deactivate('select')
-      message_activate('message')
-      kanaf.load_scenario(file, target)
+      message.hide_all()
+      message.activate('message')
+      kanaf.load_scenario(target)
       kanaf.logging = true
     end
   end
 
   if img then
-    message_reserve_clickable_image(img, hover, on_click, nil)
-    message_show_next()
+    message.reserve_clickable_image(img, hover, on_click, nil)
+    message.show_next()
   elseif text then
-    message_reserve_clickable(text, on_click, nil)
-    message_show_next()
+    message.reserve_clickable(text, on_click, nil)
+    message.show_next()
   end
 end
 
@@ -272,7 +379,8 @@ function tags.load(param)
 
   if log then
     if not id then
-      print('error: id is not given')
+      local msg = string.format('error at %s : id is not given', kanaf.get_pos())
+      lev.debug.print(msg)
       return false
     end
     kanaf.load_log(id)
@@ -283,54 +391,85 @@ function tags.logging(param)
   local enable = param.on or param.enable
   local disable = param.off or param.disable
 
-  if enable == true or enable == 1 then
+  if enable or disable == false then
     kanaf.logging = true
-  elseif enable == false or enable == 0 or disable then
+  elseif disable or enable == false then
     kanaf.logging = false
   end
   return true
 end
 
+function tags.macro(param)
+  local name = param.name or param.record
+  local reset = param.reset or param.rewrite
+
+  if not name then
+    local msg = string.format('warning at %s : No macro name.',
+                              kanaf.get_pos())
+    lev.debug.print(msg)
+    return false
+  end
+
+  if reset then
+    tags.macros[name] = nil
+  end
+
+  local content = kanaf.seek_to_endmacro()
+  if not tags.macros[name] then
+    tags.macros[name] = content
+  end
+end
+
 function tags.map(param)
   local clear = param.clear or param.reset
   local name = param.name or param.layer
-  local x = param.x or param.left or param.left_x or 0
-  local center_x = param.center_x or param.cx
-  local right_x = param.right_x or param.right or param.rx
+  local x = param.x
+  local lx = param.lx or param.left or param.left_x or 0
+  local cx = param.cx or param.center_x
+  local rx = param.rx or param.right or param.right_x
   local y = param.y or param.top or param.top_y or 0
-  local center_y = param.center_y or param.cy
-  local bottom_y = param.bottom_y or param.bottom or param.by
+  local cy = param.cy or param.center_y
+  local by = param.by or param.bottom or param.bottom_y
   local src = param.src or param.image or param.storage or param.img
   local alpha = param.alpha or param.a or param.opaque or 255
   local hover = param.hover or param.hover_image
   local text = param.text or param.string
-  local visible = param.visible
+  local show = param.show or param.visible
+  local hide = param.hide or param.unvisible
   local call = param.call
   local jump = param.jump or param.goto
-  local file = param.file or param.filename
   local create = param.create
   local delete = param.delete
+  local font_size = param.font_size or param.size or 32
+  local above = param.above or param.set_top
+  local hover_se = param.hover_se or param.hover_sound
+  local lclick_se = param.lclick_se or param.lclick_sound
+  local str_on_lclick = param.on_lclick or param.on_left_click
 
---  file = file or kanaf.current.file
-
-  if create then
-    layers_add(lev.image.map(),
+  if create and name then
+    layers.add(lev.image.map(),
                {name = name, texture = true, x = 0, y = 0})
   end
 
-  if delete then
-    layers_delete(name)
+  if delete and name then
+    layers.delete(name)
     return true
   end
 
-  local layer = layers_lookup[name]
+  local layer = layers.lookup[name]
   if not layer then
     print(string.format('warning: layer "%s" is not found.', tostring(name)))
     return false
   end
 
-  if type(visible) == 'boolean' then
-    layer.visible = visible
+  if above then
+    layers.set_top(name)
+  end
+
+  if show or hide == false then
+    layer.visible = true
+  elseif hide or show == false then
+    layer.visible = false
   end
 
   if not layer.img or layer.img.type_name ~= 'lev.image.map' then
@@ -344,7 +483,7 @@ function tags.map(param)
   local img = nil
   if text then
     local font = lev.font.load()
-    font.size = 32
+    font.size = font_size
     img = lev.image.string(font, tostring(text))
   elseif src then
     local path = lev.package.resolve(src)
@@ -360,20 +499,82 @@ function tags.map(param)
     end
   end
 
+  local lclick_se_path = nil
+  if lclick_se then
+    lclick_se_path = lev.package.resolve(lclick_se) or
+                     lev.package.resolve(lclick_se .. '.ogg')
+    if not lclick_se_path then
+      local msg =
+        string.format('warning at %s : Sound "%s" is not found.',
+                      kanaf.get_pos(), hover_se)
+      lev.debug.print(msg)
+    end
+  end
+
+  local on_lclick = nil
+  if str_on_lclick then
+    on_lclick = function()
+      if mixer and lclick_se_path then
+        mixer:slot(0):play(lclick_se_path)
+      end
+      kanaf.push('lclick', str_on_lclick)
+    end
+  elseif call then
+    on_lclick = function()
+      if mixer and lclick_se_path then
+        mixer:slot(0):play(lclick_se_path)
+      end
+      kanaf.call(call)
+    end
+  elseif jump then
+    on_lclick = function()
+      if mixer and lclick_se_path then
+        mixer:slot(0):play(lclick_se_path)
+      end
+      kanaf.load_scenario(jump)
+    end
+  else
+    on_lclick = function()
+      if mixer and lclick_se_path then
+        mixer:slot(0):play(lclick_se_path)
+      end
+    end
+  end
+
+  local on_hover = nil
+  if hover_se then
+    local path = lev.package.resolve(hover_se) or
+                 lev.package.resolve(hover_se .. '.ogg')
+    if not path then
+      local msg =
+        string.format('warning at %s : Sound "%s" is not found.',
+                      kanaf.get_pos(), hover_se)
+      lev.debug.print(msg)
+    else
+      on_hover = function()
+        if mixer then
+          mixer:slot(0):play(path)
+        end
+      end
+    end
+  end
+
   if img then
-    if center_x then
-      x = (conf.frame_w - img.w) / 2 + center_x
+    if x then
+      lx = x - (img.w / 2)
+    elseif cx then
+      lx = (conf.frame_w - img.w) / 2 + cx
+    elseif rx then
+      lx = conf.frame_w - img.w + rx
     end
-    if right_x then
-      x = conf.frame_w - img.w + right_x
+    if cy then
+      y = (conf.frame_h - img.h) / 2 + cy
     end
-    if center_y then
-      y = (conf.frame_h - img.h) / 2 + center_y
-    end
-    if bottom_y then
-      y = conf.frame_h - img.h + bottom_y
+    if by then
+      y = conf.frame_h - img.h + by
     end
 
+    local hover_img = nil
     if hover then
       local path = lev.package.resolve(hover)
       path = path or lev.package.resolve(hover..'.png')
@@ -381,34 +582,90 @@ function tags.map(param)
         print(string.format('warning: image "%s" is not found.', tostring(hover)))
         return false
       end
-      local hover_img = lev.image.load(path)
+      hover_img = lev.image.load(path)
       if not hover_img then
         print(string.format('warning: error on loading image "%s"', tostring(hover)))
         return false
       end
-
-      file = file or kanaf.current.filename
-      local on_lclick = nil
-      if call then
-        on_lclick = function()
-          kanaf.call(file, call)
-        end
-      elseif jump then
-        on_lclick = function()
-          kanaf.load_scenario(file, jump)
-        end
-      end
-      layer.img:map_link{ img, hover_img, x, y, on_lclick = on_lclick, on_hover = on_hover }
     else
-      layer.img:map_image(img, x, y, alpha)
+      hover_img = img:clone()
     end
+    layer.img:map_link { img, hover_img, lx, y, alpha = alpha,
+                         on_lclick = on_lclick, on_hover = on_hover }
+  end
+end
+
+function tags.msg(param)
+  local all = param.all
+  local create = param.create or param.new
+  local delete = param.delete or param.del or param.remove
+  local name = param.layer or param.name
+  local activate = param.activate or param.act
+  local show = param.show or param.visible
+  local hide = param.hide or param.unvisible
+  local x = param.x
+  local y = param.y
+  local w = param.w or param.width
+
+  name = name or 'active'
+
+  if create and name then
+    layers.add(lev.image.layout(w or conf.frame_w)
+               {name = name, texture = true, x = x or 0, y = y or 0})
+  end
+
+  if delete and name then
+    layers.delete(name)
+    return true
+  end
+
+  local layer = layers.lookup[name]
+  if not all then
+    if not layer then
+      local msg = string.format('warning at %s : layer "%s" is not found', kanaf.get_pos(), tostring(name))
+      lev.debug.print(msg)
+      return false
+    end
+  end
+
+  if activate then
+    if not name or name == 'active' then
+      local msg = string.format('warning at %s : please specify the layer name', kanaf.get_pos())
+      lev.debug.print(msg)
+      return false
+    end
+    message.activate(name)
+  end
+
+  if show or hide == false then
+    if all then
+      message.show_all()
+    else
+      layer.visible = true
+    end
+  elseif hide or show == false then
+    if all then
+      message.hide_all()
+    else
+      layer.visible = false
+    end
+  end
+
+  if x then
+    layer.x = x
+  end
+  if y then
+    layer.y = y
+  end
+  if w and layer.img then
+    layer.img.w = w
   end
 end
 
 function tags.p(param)
   kanaf.key_pressed = false
   kanaf.current.status = 'wait_key'
-  layers_lookup.wait_page.visible = true
+  layers.lookup.wait_page.visible = true
 end
 
 function tags.print(param)
@@ -420,33 +677,35 @@ function tags.print(param)
     if ruby then
       text = tostring(text)
       ruby = tostring(ruby)
-      message_reserve_word(text, ruby)
-      local format = string.format('[print text="%s" ruby="%s"]', text, ruby)
-      kanaf.history = kanaf.history .. format
-      message_show_next()
+      message.reserve_word(text, ruby)
+      backlog.add(string.format('[print text="%s" ruby="%s"]', text, ruby))
+      message.show_next()
     else
-      kanaf.current.buffer = tostring(text) .. kanaf.current.buffer
+      kanaf.push('print', text)
     end
     return true
   elseif exp then
---print('CODE: ', string.format('return %s', tostring(exp)))
     local f = loadstring(string.format('return %s', tostring(exp)))
---print('F: ', f)
     local val
+    if not f then
+      local msg =
+        string.format('warning at %s : Syntax error : %s',
+                      kanaf.get_pos(), exp)
+      lev.debug.print(msg)
+      return false
+    end
     if f then
       val = f()
     end
---print('VAL: ', val)
-    kanaf.current.buffer = tostring(val) .. kanaf.current.buffer
+    kanaf.push('print', val)
     return true
   end
 end
 
 function tags.r(param)
-  message_reserve_new_line()
-  message_show_next()
-  message_show_next()
-  kanaf.history = kanaf.history .. '[r]'
+  message.reserve_new_line()
+  message.complete()
+  backlog.add('[r]')
 end
 
 tags['return'] = function()
@@ -456,7 +715,6 @@ end
 function tags.s(param)
   kanaf.key_pressed = false
   kanaf.current.status = 'stop'
---  kanaf.current.buffer = '[s]' .. kanaf.current.buffer
 end
 
 function tags.save(param)
@@ -465,7 +723,9 @@ function tags.save(param)
 
   if log then
     if not id then
-      print('error: id is not given')
+      local msg =
+        string.format('warning at %s : No ID is given.', kanaf.get_pos())
+      lev.debug.print(msg)
       return false
     end
     kanaf.save_log(id, conf.thumb_w, conf.thumb_h)
@@ -477,44 +737,79 @@ function tags.screenshot(param)
 end
 
 function tags.select(param)
-  message_deactivate('message')
-  message_activate('select')
   kanaf.logging = false
+  message.hide_all()
+  message.activate('select')
 end
 
 function tags.set(param)
   local event = param.event or param.evt
   local call = param.call
   local jump = param.jump
-  local file = param.file or param.filename or param.storage
   local reset = param.reset or param.clear
+  local lock = param.lock or param.locking
 
   file = file or kanaf.current.filename
 
   if event == 'on_exit' or event == 'on_quit' then
     if call then
-      kanaf.current.on_quit = function() kanaf.call(file, call) end
+      kanaf.current.on_quit = function() kanaf.call(call) end
     elseif jump then
-      kanaf.current.on_quit = function() kanaf.load_scenario(file, jump) end
+      kanaf.current.on_quit = function() kanaf.load_scenario(jump) end
     elseif reset then
       kanaf.current.on_quit = nil
     end
   elseif event == 'on_left_down' or event == 'on_left' or event == 'on_ldown' then
     if call then
-      kanaf.current.on_left_down = function() kanaf.call(file, call) end
+      kanaf.current.on_left_down = function() kanaf.call(call) end
     elseif jump then
-      kanaf.current.on_left_down = function() kanaf.load_scenario(file, jump) end
+      kanaf.current.on_left_down = function() kanaf.load_scenario(jump) end
     elseif reset then
       kanaf.current.on_left_down = nil
     end
   elseif event == 'on_right_down' or event == 'on_right' or event == 'on_rdown' then
     if call then
-      kanaf.current.on_right_down = function() kanaf.call(file, call) end
+      kanaf.current.on_right_down = function() kanaf.call(call) end
     elseif jump then
-      kanaf.current.on_right_down = function() kanaf.load_scenario(file, jump) end
+      kanaf.current.on_right_down = function() kanaf.load_scenario(jump) end
     elseif reset then
       kanaf.current.on_right_down = nil
     end
+  elseif event == 'on_wheel_down' then
+    if call then
+      kanaf.current.on_wheel_down = function()
+        kanaf.call(call)
+        if lock then
+          kanaf.current.on_wheel_down = nil
+        end
+      end
+    elseif jump then
+      kanaf.current.on_wheel_down = function() kanaf.load_scenario(jump) end
+    elseif reset then
+      kanaf.current.on_wheel_down = nil
+    end
+  elseif event == 'on_wheel_up' then
+    if call then
+      kanaf.current.on_wheel_up = function()
+        kanaf.call(call)
+        if lock then
+          kanaf.current.on_wheel_up = nil
+        end
+      end
+    elseif jump then
+      kanaf.current.on_wheel_up = function() kanaf.load_scenario(jump) end
+    elseif reset then
+      kanaf.current.on_wheel_up = nil
+    end
+  end
+end
+
+function tags.skip(param)
+  local once = param.once or param.one
+
+  if once then
+    kanaf.key_pressed = true
+    kanaf.skip_once = true
   end
 end
 
@@ -522,10 +817,18 @@ function tags.sound(param)
   local src = param.src or param.source or param.storage or param.file
   local slot = param.slot or 0
   local command = param.command or param.mode
+  local clear = param.clear or param.close
+  local load = param.load
+  local open = param.open
+  local pause = param.pause or param.stop
+  local play = param.play
+  local replay = param.replay
   local repeating = param['repeat'] or param.repeating or param.loop or false
+  local wait = param.wait or param.waiting
 
   if not mixer then
-    print('warning: mixer is not initialized')
+    local msg = string.format('warning at %s : mixer is not initialized', kanaf.get_pos())
+    lev.debug.print(msg)
     return false
   end
 
@@ -535,54 +838,71 @@ function tags.sound(param)
     path = path or lev.package.resolve(src .. '.ogg')
     path = path or lev.package.resolve(src .. '.wav')
     if (not path) then
-      print(string.format('warning: sound file "%s" is not found', src))
+      local msg = string.format('warning at %s : sound file "%s" is not found', kanaf.get_pos(), tostring(src))
+      lev.debug.print(msg)
       return false
     end
   end
 
+  if slot <= 0 then
+    repeating = false
+  end
+  if repeating then
+    play = true
+  end
+
   if slot == 0 then
     if not src then
-      print('please specify sound source file')
+      local msg = string.format('warning at %s : please specify sound source file', kanaf.get_pos())
+      lev.debug.print(msg)
       return false
     end
     mixer:slot(0):play(path)
     return true
   end
 
-  if slot <= 0 then
-    repeating = false
-  end
-
-  if command == 'clear' then
+  if clear then
     mixer:slot(slot):clear()
-  elseif command == 'close' then
-    mixer:slot(slot):clear()
-  elseif command == 'load' then
+  elseif load then
     if (not src) then
-      print('please specify sound source file')
+      local msg = string.format('warning at %s : please specify sound source file', kanaf.get_pos())
+      lev.debug.print(msg)
+      return false
     end
     mixer:slot(slot):load(path)
-  elseif command == 'open' then
+  elseif open then
     if (not src) then
-      print('please specify sound source file')
+      local msg = string.format('warning at %s : please specify sound source file', kanaf.get_pos())
+      lev.debug.print(msg)
+      return false
     end
     mixer:slot(slot):open(path)
-  elseif command == 'pause' then
+  elseif pause then
     mixer:slot(slot):pause()
-  elseif command == 'play' then
+  elseif play then
     if path then
       mixer:slot(slot):play(path, repeating)
     else
       mixer:slot(slot):play(repeating)
     end
-  elseif command == 'stop' then
-    mixer:slot(slot):pause()
+  elseif replay then
+    mixer:slot(slot).pos = 0
+    mixer:slot(slot):play()
   end
+
+  if wait then
+    if mixer:slot(slot).is_playing then
+      mixer:slot(slot):play(false)
+      tags.wait_slot = slot
+      kanaf.current.status = 'wait_sound'
+    end
+  end
+
   return true
 end
 
 function tags.wait(param)
-  local delay = param.time or param.delay or param.duration or param[1] or 1
+  local delay = param.time or param.delay or param.duration or 0
   delay = tonumber(delay)
   if delay then
     tags.wait_timer:start(0)

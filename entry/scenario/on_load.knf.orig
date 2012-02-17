@@ -1,0 +1,74 @@
+; ロード画面
+
+*sub_load
+; ロード画面を呼び出すサブルーチン
+[set event="on_right_down" jump="sub_load_end"]
+[map layer="load" create visible]
+[map layer="load" image="bg_load" cx=0 cy=0 alpha=200]
+[map layer="load" image="menu_prev" hover_image="menu_prev_hover"
+ rx=-50 y=30 jump="sub_load_end"]
+; ログ番号1
+[map layer="load" image="frame_base" hover_image="frame_hover"
+ cx=0 cy=-60 call="sub_load_log1" cond=kanaf.get_log(1)]
+[map layer="load" image="frame_base" cx=0 cy=100 cond=(not kanaf.get_log(1))]
+[map layer="load" cond=kanaf.get_log(1)
+ image=kanaf.get_log_image(1) x=100 cy=-60]
+[map layer="load" cond=kanaf.get_log(1)
+ text=kanaf.get_log_scene(1) x=230 cy=-80]
+[map layer="load" cond=kanaf.get_log(1)
+ text=kanaf.get_log_date(1) x=230 cy=-30]
+; ログ番号2
+[map layer="load" image="frame_base" hover_image="frame_hover"
+ cx=0 cy=100 call="sub_load_log2" cond=kanaf.get_log(2)]
+[map layer="load" image="frame_base" cx=0 cy=100 cond=(not kanaf.get_log(2))]
+[map layer="load" cond=kanaf.get_log(2)
+ image=kanaf.get_log_image(2) x=100 cy=100]
+[map layer="load" cond=kanaf.get_log(2)
+ text=kanaf.get_log_scene(2) x=230 cy=80]
+[map layer="load" cond=kanaf.get_log(2)
+ text=kanaf.get_log_date(2) x=230 cy=130]
+[s]
+
+*sub_load_end
+; [set event="on_right_down" call="sub_right" file="on_right"]
+[map layer="load" delete]
+[return]
+
+*sub_load_yes
+[map layer="load_pop" delete]
+[map layer="load" delete]
+[map layer="right" delete]
+[map layer="title" delete]
+[image layer="active" visible]
+[cm]
+[load log id=tmp.load_id]
+[eval code="tmp.load_id = nil"]
+[return]
+
+*sub_load_no
+[map layer="load_pop" delete]
+[return]
+
+*sub_load_pop
+[set event="on_right_down" jump="sub_load_no"]
+[map layer="load_pop" create visible]
+[map layer="load_pop" image="bg_pop" cx=0 cy=0 alpha=200]
+[map layer="load_pop" image="menu_on_load" cx=0 cy=-75]
+[map layer="load_pop" image="menu_yes" hover_image="menu_yes_hover"
+ cx=-100 cy=50 jump="sub_load_yes"]
+[map layer="load_pop" image="menu_no" hover_image="menu_no_hover"
+ cx=100 cy=50 jump="sub_load_no"]
+[s]
+
+*sub_load_log1
+; ログ番号1をロード
+[eval code="tmp.load_id=1"]
+[jump to="sub_load_pop"]
+[s]
+
+*sub_load_log2
+; ログ番号2をロード
+[eval code="tmp.load_id=2"]
+[jump to="sub_load_pop"]
+[s]
+

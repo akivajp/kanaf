@@ -1,4 +1,5 @@
-#game_start | ゲーム開始
+*game_start|ゲーム開始
+; ゲーム開始
 [logging on]
 
 [image layer='1' src='fg_aqua001' visible=true by=0 cx=0]
@@ -6,17 +7,16 @@
 やぁ、はじめまして。[r]
 スクリプトシステム[font color='red']Kanaf[font reset]の開発をしている[font color='red']Akiva[font reset]と申します。[p][cm]
 
-[r]
 この度は、機能紹介デモをダウンロード頂き、まことにありがとうございます。[r]
 まだまだ開発途中段階で、未実装の部分や仕様が変更される部分が多いに予想されますが、
 皆様からの声を頂いて、よりよいシステムを作り上げたいと思っています。[p][cm]
 
-[r]
 さっそく機能紹介デモに移りたいところですが、
 開発者は絶望的なまでに絵心がないため、
 素材として用意したグラフィックがショボショボなあたり、予めご了承下さいませ。_(._.)_[p][cm]
 
-#outline|概要
+
+*outline|概要
 [image layer='1' src='fg_aqua001' by=0 cx=0 visible]
 
 【Akiva】[r]
@@ -26,72 +26,68 @@
 [image layer='2' src='fg_green001' by=0 cx=100  visible]
 
 【謎の質問者】[r]
-[font bigger][font bigger]
-そもそもKanafって何やねん?[font reset][p][cm]
+[font size=10]
+そもそもKanafって何やねん?[p][cm]
 
+[font reset]
 【Akiva】[r]
 おや、これは謎の質問者さん。未確認生命体っぽいシルエットですね。[p][cm]
 
 【謎の質問者】[r]
-[font bigger][font bigger]
+[font size=10]
 うっさい、お前に言われとうないわ。[r]
 っつうか描いたんお前やろ。[p][cm]
 
-[r]
-で、ぶっちゃけKanafって何なん?[font reset][p][cm]
+で、ぶっちゃけKanafって何なん?[p][cm]
 
+[font reset=true]
 【Akiva】[r]
 ごもっともな質問です。[r]
 始まったばかりで、まだまだ無名のプロジェクトですもんね。[p][cm]
 
-[r]
 Kanaf(カナフ)とは、プログラミング等の知識を持たない人でも、
 [font color='red']タグ[font reset=true]を打ち込むことで簡単に読み物中心のメディア表現を実現するスクリプト言語であり、
 またそのエンジンの名称です。シンプルながらも多機能高性能を目指しています。[p][cm]
 
-[r]
 これを用いることで、アドベンチャーゲームやノベルゲームのような読み物系ゲームとか、
 電子書籍のようなアプリケーション作成が用意になるでしょう。[p][cm]
 
-[r]
 タグというのは、[font color='red']\[タグ名 属性名1=属性値1 属性名2=属性値2 ...\][font reset=true]といった形式のテキスト(ただし実際は英数字)のことで、 文章中にこれを埋め込むことで、改行や改ページ、 フォントサイズや画像表示といった様々な操作に指令を出すことができます。[p][cm]
 
 【謎の質問者】[r]
-[font bigger][font bigger]
-え、そういうソフトって他にも既に出てるんちゃうの?[font reset][p][cm]
+[font size=10]
+え、そういうソフトって他にも既に出てるんちゃうの?[p][cm]
 
+[font reset]
 【Akiva】[r]
 確かにその通り。
 ここではソフト名は申し上げませんが、既に似たようなソフトは随分多く作られています。[p][cm]
 
-[r]
 大部分は日本製で、優秀なソフトも多いですが、そのほとんどには共通の[font color='red']弱点[font reset=true]があります。[p][cm]
 
 【謎の質問者】[r]
-[font bigger][font bigger]
-弱点?[font reset][p][cm]
+[font size=10]
+弱点?[p][cm]
 
 [font reset]
 【Akiva】[r]
 その弱点とは、それらがWindowsでしか動作できないということです。[p][cm]
 
 【謎の質問者】[r]
-[font bigger][font bigger]
-それってそんな問題なん? わいはWindowsしかつこうてへんで?[font reset][p][cm]
+[font size=10]
+それってそんな問題なん? わいはWindowsしかつこうてへんで?[p][cm]
 
+[font reset]
 【Akiva】[r]
 だって作品を作るなら少しでも多くの人に楽しんでもらいたいじゃない！[r]
 確かに未だパソコンなどの端末においてWindowsのシェアは圧倒的ですが、1割近くは他のOSですし、
 携帯端末への対応も今後は見逃せませんよね。[p][cm]
 
-[r]
 Kanafは既にWindowsファミリーの他に、Mac OS XやLinuxでのテスト動作を確認できています。[r]
 携帯端末向けのiOSやAndroidでの動作はまだ未確認ですが、それらを考慮した設計を行なっています。[p][cm]
 
-[r]
 また、対応OSの制限以外にも、既存のスクリプトエンジンの中には、有料ライセンスであったり、再配布や商用利用に制限のあるものが多いです。[p][cm]
 
-[r]
 でもKanafはオープンソースと呼ばれるソフトウェアの一種で、完全フリーで再配布や商用利用への制限はありません。
 中身を改造して配るのもOKで、それを保証するドキュメント1つさえ一緒なら煮るなり焼くなり自由で自由度が高いです。[p][cm]
 
@@ -101,7 +97,7 @@ Kanafは既にWindowsファミリーの他に、Mac OS XやLinuxでのテスト�
 【Akiva】[r]
 急に声(フォント)が小さくなりましたね。[p][cm]
 
-#requirements|何が必要?
+*requirements|何が必要?
 [image layer='1' src='fg_aqua001' visible=true by=0 cx=-100]
 [image layer='2' src='fg_green001' visible=true by=0 cx=100]
 
@@ -115,11 +111,9 @@ Kanafは既にWindowsファミリーの他に、Mac OS XやLinuxでのテスト�
 もちろん何を作りたいかによるんですが、アドベンチャー形式のゲームを作りたいと思っているなら、
 立ち絵と背景を何セットか最低限用意しなきゃいけませんね。[p][cm]
 
-[r]
 BGMも必要でしょうし、場合によっては効果音も用意しなきゃ、ですね。[r]
 もちろん著作権的な問題をクリアできるならフリー素材を使ってもOKです。[p][cm]
 
-[r]
 あとは当然ながらシナリオがなければ始まりませんよね。
 Kanafではシナリオを中心として、それに同期したエフェクトを表現するためにタグを埋め込んでいきます。[p][cm]
 
@@ -128,25 +122,26 @@ Kanafではシナリオを中心として、それに同期したエフェクト
 画像ってのは具体的にはどうすればええんかいな?[p][cm]
 
 
-#graphics|グラフィックス
+*graphics|グラフィックス
 
 【Akiva】[r]
 Kanafは画像形式として、BMP、PNG、GIF、JPEG、TGAなどの読み込みに対応しています。[r]
 また描画処理はアルファ(不透明)チャンネルを含んだ32bitフルーカラーに最適化されています。[p][cm]
 
-[r]
 なので、PNG形式の透過画像がそのまま使えるので最もオススメです。[r]
 逆に言うと、旧来のマスク画像による透過への対応は現状考慮されていません。[p][cm]
 
-#tags|主要タグ
+*tags|主要タグ
 [image layer='bg' src='bg002' visible=true]
 [image layer='1' src='fg_aqua001' visible=true by=0 cx=-80 alpha=200]
 [image layer='2' src='fg_green001' visible=true by=0 cx=80 alpha=200]
 
 【Akiva】[r]
+[call target='sub1']
 もうめんどいので主要なタグ紹介をします。[p][cm]
 
 【質問者】[r]
+[call target='sub1']
 お、おう。[p][cm]
 
 【Akiva】[r]
@@ -156,23 +151,30 @@ Kanafは画像形式として、BMP、PNG、GIF、JPEG、TGAなどの読み込�
 [font bigger=true]
 どうする?[r]
 [r]
-・[link text='選択肢1' goto='#select1'][r]
+・[link text='選択肢1' goto='select1'][r]
 [r]
-・[link text='選択肢2' goto='#select2'][r]
+・[link text='選択肢2' goto='select2'][r]
 [font reset=true]
 [s]
 
-#select1
+*select1
 [cm]
 ほげ[l][r]
-[jump to='#common']
+[jump to='common']
 
-#select2
+*select2
 [cm]
 ほげほげ[l][r]
-[jump to='#common']
+[jump to='common']
 
-#common
+*common
 共通メッセージ
 [s]
+
+*sub1
+[cm]
+[eval code="tmp.xxx = (tmp.xxx or 0) + 1"]
+サブルーチン入りましたー。[l][r]
+[print text=tmp.xxx]回目ー!!![l][r]
+[return]
 

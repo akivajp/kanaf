@@ -1,36 +1,42 @@
-*init
-; 初期化処理
-[set event='on_quit'       call='sub_quit'  file="on_quit"]
-; [set event='on_right_down' call='sub_right' file="on_right"]
+//
+// スタートアップ
+//
 
-*menu
-; ゲームタイトル画面
+#init
+// 初期化処理
+// [debug enable]
+[set event='on_quit' call='on_quit#sub_quit']
 
-[map layer='title' create visible=false]
+#menu
+// ゲームタイトル画面
+[map layer='title' create]
 [map layer='title' image='top']
 
 [map
   layer='title' image='menu_start' hover='menu_start_hover' cx=-120 by=-130
-  jump='start'
+  jump='#start' hover_se='se_hover' lclick_se='se_yes'
 ]
 [map
   layer='title' image='menu_load' hover='menu_load_hover' cx=120 by=-130
-  call='sub_load' file='on_load'
+  call='on_load#sub_load' hover_se='se_hover' lclick_se='se_yes'
 ]
 [map
   layer='title' image='menu_config' hover='menu_config_hover' cx=-120 by=-50
-  call='sub_config' file='on_config'
+  call='on_config#sub_config' hover_se='se_hover' lclick_se='se_yes'
 ]
 [map
   layer='title' image='menu_exit' hover='menu_exit_hover' cx=120 by=-50
-  call='sub_quit' file='on_quit'
+  call='on_quit#sub_quit' hover_se='se_hover'
 ]
-[map layer='title' visible]
+[map layer='title' show]
 [s]
 
-*start
-; ゲーム開始
-[set event='on_right_down' call='sub_right' file="on_right"]
+#start
+// ゲーム開始
+[set event='on_right_down' call='on_right#sub_right']
+[set event='on_wheel_down' call='on_wheel#sub_wheel_down' lock]
+[set event='on_wheel_up'   call='on_wheel#sub_wheel_up' lock]
 [map layer='title' delete]
-[jump to='game_start' file='000']
+[msg layer='message' activate]
+[jump to='000#game_start']
 

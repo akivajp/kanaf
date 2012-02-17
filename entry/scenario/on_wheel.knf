@@ -1,0 +1,38 @@
+//
+// マウスホイール処理
+//
+
+#sub_wheel_down
+// ホイールダウン
+// 通常左クリックと同様の扱い
+[skip once]
+[return]
+
+#sub_wheel_up
+// ホイールアップ
+// バックログ画面
+[set event="on_wheel_down" call="#sub_backlog_next" lock]
+[set event="on_wheel_up" call="#sub_backlog_prev" lock]
+[set event="on_right" jump="#sub_wheel_up_end"]
+[backlog bg="backlog_bg" alpha=200]
+[backlog seek_end]
+[backlog show]
+[s]
+
+#sub_wheel_up_end
+// バックログ画面終了
+[backlog hide]
+[return]
+
+#sub_backlog_prev
+[backlog seek_prev]
+[backlog show]
+[wait time=0]
+[return]
+
+#sub_backlog_next
+[backlog seek_next]
+[backlog show]
+[wait time=0]
+[return]
+

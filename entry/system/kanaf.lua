@@ -3,12 +3,14 @@ require 'lev.package'
 require 'lev.string'
 require 'lev.util'
 
+lev.require 'system/backlog'
 lev.require 'system/tags'
 
 -- record variables
 log = { }
 sys = { }
 tmp = { }
+args = { }
 
 --module('kanaf', package.seeall)
 kanaf = kanaf or { }
@@ -16,45 +18,63 @@ kanaf.current = { }
 
 -- functions
 
-function kanaf.call(filename, target)
+-- push current status to the call stack, and jump to the target
+-- target - formatted as "filename#label" format
+function kanaf.call(target)
+  target = tostring(target)
+  local filename = target:match('^([^#]+)')
+  local label = target:match('^[^#]*#(.*)')
+
+  if #kanaf.call_stack > 100 then
+    local msg = string.format('warning at %s : Stack over flow !', kanaf.get_pos())
+    lev.debug.print(msg)
+    return false
+  end
+
   if not filename then
     filename = current.filename or conf.first_load
   end
-  local real_file
   local found = lev.package.resolve(filename)
               or lev.package.resolve(filename .. '.knf')
               or lev.package.resolve(filename .. '.txt')
-              or error(string.format('Neither %s.knf nor %s.txt is not found', filename, filename))
+  if not found then
+    local msg =
+      string.format('warning at %s : Neither "%s.knf" nor "%s.txt" is not found.',
+                    kanaf.get_pos(), filename, filename)
+    lev.debug.print(msg)
+    return false
+  end
 
-  local buffer = nil
   local infile = io.open(tostring(found), 'r')
   local content = infile:read('*a')
-  if target then
-    target = target:gsub('^%*', '')
-    local pos   = content:find('^%s*%*'..target..'[%s%|]')
-    pos  = pos or content:find('\n%s*%*'..target..'[%s%|]')
+  local count = 0
+--  if target then
+  if label then
+--    target = target:gsub('^%*', '')
+    local pos  = content:find('^[\t ]*#[\t ]*'..label..'[%s%|]')
+    pos = pos or content:find('\n[\t ]*#[\t ]*'..label..'[%s%|]')
     if pos then
-      buffer = lev.string.unicode(content:sub(pos))
+      count = #lev.string.unicode(content:sub(1, pos - 1))
     else
-      print(string.format('error: label "%s" is not found on file "%s"', target, filename))
+      local msg =
+        string.format('warning at %s : Label "%s" is not found on file "%s".',
+                      label, filename)
+      lev.debug.print(msg)
       return false
     end
-  else
-    buffer = lev.string.unicode(content)
   end
 
   local prev = kanaf.current
-  table.insert(kanaf.call_stack, kanaf.current)
-  kanaf.current = { }
-  current = kanaf.current
-  current.on_left_down = prev.on_left_down
-  current.on_quit = prev.on_quit
-  current.on_right_down = prev.on_right_down
+  table.insert(kanaf.call_stack, lev.util.copy_table(kanaf.current))
 
-  current.buffer = buffer
+  current.buffer = lev.string.unicode(content)
   current.filename = filename
+  current.bufname = filename
   current.new_line = true
   current.status = 'continue'
+  current.line = 1
+  current.pos = 1
+  kanaf.seek_count(count)
   return true
 end
 
@@ -72,11 +92,11 @@ function kanaf.find_tag(left, right)
   if not (ch == left) then
     return found
   end
-  current.buffer = current.buffer:sub(1)
+  kanaf.seek_count(1)
 
   local count = 1
   ch = tostring(current.buffer:index(0))
-  current.buffer = current.buffer:sub(1)
+  kanaf.seek_count(1)
   while #ch > 0 do
     if ch == left then
       count = count + 1
@@ -88,7 +108,7 @@ function kanaf.find_tag(left, right)
     end
     found = found .. ch
     ch = tostring(current.buffer:index(0))
-    current.buffer = current.buffer:sub(1)
+    kanaf.seek_count(1)
   end
   return ''
 end
@@ -121,60 +141,76 @@ function kanaf.get_log_scene(id)
   return tostring(t.scene)
 end
 
+function kanaf.get_pos()
+  return string.format('%s[%s:%s]', current.bufname, current.line, current.pos)
+end
+
 -- init the data
 function kanaf.init()
   -- state variables
   kanaf.call_stack = { }
-  kanaf.history = ''
-  kanaf.interrupted = false
+--  kanaf.history = ''
+  backlog.init()
   kanaf.logging = false
   kanaf.key_pressed = false
 
   kanaf.current = { }
   kanaf.current.buffer = lev.string.create()
-  kanaf.current.filename = nil
-  kanaf.current.new_line = false
-  kanaf.current.on_left_down = nil
-  kanaf.current.on_quit = nil
-  kanaf.current.on_right_down = nil
-  kanaf.current.status = ''
   current = kanaf.current
+  current.line = 1
+  current.pos = 1
+  current.args = args
 
   kanaf.load_system()
   kanaf.load_scenario(conf.first_load)
 end
 
 -- load file and init
-function kanaf.load_scenario(filename, target)
+-- target - formatted as "filename#label" format
+--function kanaf.load_scenario(filename, target)
+function kanaf.load_scenario(target)
+  target = tostring(target)
+  local filename = target:match('^([^#]+)')
+  local label = target:match('^[^#]*#(.*)')
+
   if not filename then
     filename = current.filename or conf.first_load
   end
-  local real_file
   local found = lev.package.resolve(filename)
               or lev.package.resolve(filename .. '.knf')
               or lev.package.resolve(filename .. '.txt')
-              or error(string.format('Neither %s.knf nor %s.txt is not found', filename, filename))
+  if not found then
+    local msg =
+      string.format('warning at %s : Neither "%s.knf" nor "%s.txt" is not found.',
+                    kanaf.get_pos(), filename, filename)
+    lev.debug.print(msg)
+    return false
+  end
 
   local infile = io.open(tostring(found), 'r')
   local content = infile:read('*a')
-  if target then
-    target = target:gsub('^%*', '')
-    local pos   = content:find('^%s*%*'..target..'[%s%|]')
-    pos  = pos or content:find('\n%s*%*'..target..'[%s%|]')
+  local count = 0
+  if label then
+    local pos  = content:find('^[\t ]*#[\t ]*'..label..'[%s%|]')
+    pos = pos or content:find('\n[\t ]*#[\t ]*'..label..'[%s%|]')
     if pos then
-      current.buffer = lev.string.unicode(content:sub(pos))
+      count = #lev.string.unicode(content:sub(1, pos - 1))
     else
-      print(string.format('error: label "%s" is not found on file "%s"', target, filename))
+      print(string.format('error: label "%s" is not found on file "%s"', label, filename))
       return false
     end
-  else
-    current.buffer = lev.string.unicode(content)
   end
 
+  current.buffer = lev.string.unicode(content)
   current.content = content
   current.filename = filename
+  current.bufname = filename
   current.new_line = true
   current.status = 'continue'
+  current.line = 1
+  current.pos = 1
+--print("\n\nLOAD! COUNT:", count)
+  kanaf.seek_count(count)
   return true
 end
 
@@ -188,11 +224,15 @@ function kanaf.load_log(id)
   else
     log = { }
   end
---  kanaf.init()
-  kanaf.history = log.history or ''
+  local last_status = current
+  kanaf.init()
+  kanaf.history = log.history or { '' }
   kanaf.logging = log.logging or false
---print('LOADING', log.filename, log.label, log.scene)
-  kanaf.load_scenario(log.filename, log.label)
+  -- status resuming before the loading
+  kanaf.current = last_status
+  current = last_status
+  -- loading
+  kanaf.load_scenario(log.filename .. '#' .. log.label)
 end
 
 function kanaf.load_system()
@@ -203,7 +243,8 @@ function kanaf.load_system()
   else
     sys = { }
   end
-  sys.count = (sys.count or 0) + 1
+  sys.play_count = (sys.play_count or 0) + 1
+  sys.passed_labels = { }
 end
 
 -- extract the tag and parse it
@@ -217,73 +258,76 @@ function kanaf.parse_tag()
     local f = loadstring(code)
     if f then f() end
   else
-    local tag_name = tag:match('^%s*([^%s,]+)') or ''
-    local tag_body = tag:match('^%s*[^%s,]+[%s,]+(.*)$')
+    local tag_name = tag:match('^%s*([^%s,\'\"%(]+)') or ''
+--print('TAG NAME:', tag_name)
+    local tag_body = tag:match('^%s*[^%s,\'\"%(]+[%s,]+(.*)$')
+--print('TAG BODY: ', tag_body)
     local params = {}
 
     if tag_body then
       local params_str = ''
---print('TAG BODY: ', tag_body)
       while #tag_body > 0 do
         tag_body = tag_body:gsub('^[%s,]+', '')
-        if tag_body:find('^%w') then
-          -- word or "table.variable" is found
-          local pos1, pos2 = tag_body:find('^[%w._]+')
-          params_str = params_str..tag_body:sub(1, pos2)
-          tag_body = tag_body:sub(pos2 + 1)
-          local pos1, pos2 = tag_body:find('^%s*%=%s*')
-          if pos1 then
-            -- "property =' is found
-            params_str = params_str .. '='
-            tag_body = tag_body:sub(pos2 + 1)
+        -- finding property name
+        local pos1, pos2 = tag_body:find('^[^%s,=]+')
+        if not pos2 then break end
+        local property = string.format('["%s"]', tag_body:sub(1, pos2))
+--print("PROP:", property)
+        params_str = params_str..property
+        tag_body = tag_body:sub(pos2 + 1)
 
-            if tag_body:find('^%(') then
-              -- "(expression)" is found
-              local pos1, pos2 = tag_body:find('^%b()')
-              if pos1 then
-                params_str = params_str .. tag_body:sub(1, pos2) .. ','
-                tag_body = tag_body:sub(pos2 + 1)
-              else
-                print("warning: no right paren ')' correspoinding with left paren '('")
-                break
-              end
-            elseif tag_body:find('^"') then
-              -- "string" is found 
-              local pos1, pos2 = tag_body:find('[^%"]%"')
-              if pos2 then
-                params_str = params_str .. tag_body:sub(1, pos2) .. ','
-                tag_body = tag_body:sub(pos2 + 1)
-              else
-                print([[warning: no right double quotation '"' correspoinding with the left]])
-                break
-              end
-            elseif tag_body:find("^'") then
-              -- 'string' is found
-              local pos1, pos2 = tag_body:find("[^%']%'")
-              if pos2 then
-                params_str = params_str .. tag_body:sub(1, pos2) .. ','
-                tag_body = tag_body:sub(pos2 + 1)
-              else
-                print([[warning: no right single quotation (') correspoinding with the left]])
-                break
-              end
+        local pos1, pos2 = tag_body:find('^%s*%=%s*')
+        if pos1 then
+          -- "property =' is found
+          params_str = params_str .. '='
+          tag_body = tag_body:sub(pos2 + 1)
+
+          if tag_body:find('^%(') then
+            -- "(expression)" is found
+            local pos1, pos2 = tag_body:find('^%b()')
+            if pos1 then
+              params_str = params_str .. tag_body:sub(1, pos2) .. ','
+              tag_body = tag_body:sub(pos2 + 1)
             else
-              -- other expression is found
-              local pos1, pos2 = tag_body:find("[%s,]+")
-              if pos1 then
-                -- "param ," form is found
-                params_str = params_str .. tag_body:sub(1, pos1-1) .. ','
-                tag_body = tag_body:sub(pos2 + 1)
-              else
-                -- "param$" form is found
-                params_str = params_str .. tag_body
-                break
-              end
+              print("warning: no right paren ')' correspoinding with left paren '('")
+              break
+            end
+          elseif tag_body:find('^"') then
+            -- "string" is found 
+            local pos1, pos2 = tag_body:find('[^%"]%"')
+            if pos2 then
+              params_str = params_str .. tag_body:sub(1, pos2) .. ','
+              tag_body = tag_body:sub(pos2 + 1)
+            else
+              print([[warning: no right double quotation '"' correspoinding with the left]])
+              break
+            end
+          elseif tag_body:find("^'") then
+            -- 'string' is found
+            local pos1, pos2 = tag_body:find("[^%']%'")
+            if pos2 then
+              params_str = params_str .. tag_body:sub(1, pos2) .. ','
+              tag_body = tag_body:sub(pos2 + 1)
+            else
+              print([[warning: no right single quotation (') correspoinding with the left]])
+              break
             end
           else
-            -- "param [property]" is found
-            params_str = params_str .. '=true,'
+            -- other expression is found
+            local pos1, pos2 = tag_body:find("[%s,]+")
+            if pos1 then
+              -- "param ," form is found
+              params_str = params_str .. tag_body:sub(1, pos1-1) .. ','
+              tag_body = tag_body:sub(pos2 + 1)
+            else
+              -- "param$" form is found
+              params_str = params_str .. tag_body
+              break
+            end
           end
+        else
+          -- property without value is found
+          params_str = params_str .. '=true,'
         end
       end
       if params_str then
@@ -292,7 +336,9 @@ function kanaf.parse_tag()
         if f then
           params = f() or {}
         else
-          print('error: tag syntax error')
+          local msg = string.format('warning at %s : Tag syntax error', kanaf.get_pos())
+          lev.debug.print(msg)
+          return nil
         end
       end
     end
@@ -305,85 +351,127 @@ function kanaf.proc_next()
 --print('STATUS:', current.status)
   if current.status == 'continue' then
     kanaf.proc_token()
-    while current.status == 'continue' and (kanaf.skip_mode or kanaf.skip_one) do
+    while current.status == 'continue' and (kanaf.skip_mode or kanaf.skip_once) do
       kanaf.proc_token()
     end
-    kanaf.skip_one = false
+    kanaf.skip_once = false
   elseif current.status == 'stop' then
     return kanaf.stop()
   elseif current.status == 'wait' then
     return kanaf.wait()
   elseif current.status == 'wait_key' then
     return kanaf.wait_key()
+  elseif current.status == 'wait_sound' then
+    return kanaf.wait_sound()
   end
 end
 
 -- processing one token of the scenario
 function kanaf.proc_token()
-  local ch = tostring(current.buffer:index(0))
+  while current.status == 'continue' do
+    local ch = tostring(current.buffer:index(0))
+--print('BUFNAME:', current.bufname, 'LINE:', current.line, 'POS:', current.pos)
 --print('CH:', ch)
-  if #ch == 0 then
-    current.status = 'stop'
-    return true
-  end
-  if ch == '[' then
-    current.new_line = false
-    local tag_name, params = kanaf.parse_tag()
+    if #ch == 0 then
+      current.status = 'stop'
+      return true
+    end
+    if ch == '[' then
+      current.new_line = false
+      local tag_name, params = kanaf.parse_tag()
 --print('TAG:', tag_name)
-    params = params or { }
-    if tags[tag_name] and params.cond ~= false then
-      return tags[tag_name](params)
+      params = params or { }
+      if tags[tag_name] then
+        if lev.util.find_member(tags.controls, tag_name) then
+          tags[tag_name](params)
+        elseif params.cond ~= false then
+          tags[tag_name](params)
+        end
+      elseif tags.macros[tag_name] then
+        -- macro execution on stack
+        if #kanaf.call_stack > 100 then
+          local msg = string.format('warning at %s : Stack over flow !', kanaf.get_pos())
+          lev.debug.print(msg)
+          return false
+        end
+        kanaf.push(tag_name, tags.macros[tag_name])
+        current.args = params
+        args = params
+      elseif tag_name then
+        local msg = string.format('warning at %s : Tag "%s" (or macro) is not found',
+                                  kanaf.get_pos(), tostring(tag_name))
+        lev.debug.print(msg)
+      end
+    elseif (ch == ' ' or ch == '\t') and current.new_line then
+      -- ignoring line top spaces as indent
+      kanaf.seek_count(1)
+    elseif ch == '#' and current.new_line then
+      -- label setting
+      local line = tostring(kanaf.seek_to_endl())
+      local label = line:match('#[\t ]*([^|\t ]+)[\t ]*|?')
+      local scene  = line:match('#[^|]*|[\t ]*(.*)')
+--print("LABEL:", label)
+--print("SCENE:", scene)
+      if label and scene and #scene > 0 then
+        if log.label then
+          -- marking old labels as passed on system
+          local full = log.filename .. '#' .. log.label
+          sys.passed_labels[full] = true
+        end
+        log.label = label
+        log.scene = scene
+        log.history = kanaf.history
+        log.logging = kanaf.logging
+        log.filename = current.filename
+        kanaf.save_system()
+      end
+    elseif ch == '\n' or ch == '\r' then
+      -- line feed
+      current.new_line = true
+      kanaf.seek_count(1)
+    elseif ch == '/' and current.buffer:index(1):cmp('/') then
+      -- comment line
+      current.new_line = true
+      kanaf.seek_to_endl()
+    elseif ch == '/' and current.buffer:index(1):cmp('*') then
+      -- comment line
+      kanaf.seek_to('*/')
+      kanaf.seek_count(2)
+    elseif ch == '\\' then
+      -- escaping code
+      current.new_line = false
+      kanaf.seek_count(1)
+      ch = tostring(current.buffer:index(0))
+      message.reserve_word(ch)
+      message.show_next()
+      kanaf.seek_count(1)
+      if kanaf.logging then
+        backlog.add('\\' .. ch)
+      end
+      return true
+    else
+      current.new_line = false
+      message.reserve_word(ch)
+      message.show_next()
+      kanaf.seek_count(1)
+      if kanaf.logging then
+        backlog.add(ch)
+      end
+      return true
     end
-    return false
-  elseif ch == '*' and current.new_line then
-    -- label setting
-    current.new_line = false
-    local line = tostring(kanaf.seek_to_endl())
-    local label = line:match('%*([^|]+)|?')
-    local scene  = line:match('%*[^|]+|(.*)')
-    if label and scene and #scene > 0 then
-      log.label = label
-      log.scene = scene
-      log.history = kanaf.history
-      log.logging = kanaf.logging
-      log.filename = current.filename
-      kanaf.save_system()
---print('SCENE:', log.label, log.scene)
-    end
-  elseif ch == '\n' or ch == '\r' then
-    -- line feed
-    current.new_line = true
-    current.buffer = current.buffer:sub(1)
-    if kanaf.logging then
-      kanaf.history = kanaf.history .. '\n'
-    end
-  elseif ch == ';' then
-    -- comment line
-    current.new_line = false
-    kanaf.seek_to_endl()
-  elseif ch == '\\' then
-    -- escaping code
-    current.new_line = false
-    current.buffer = current.buffer:sub(1)
-    ch = tostring(current.buffer:index(0))
-    message_reserve_word(ch)
-    message_show_next()
-    current.buffer = current.buffer:sub(1)
-    if kanaf.logging then
-      kanaf.history = kanaf.history .. '\\' .. ch
-    end
-    return true
-  else
-    -- ordinal character
-    current.new_line = false
-    message_reserve_word(ch)
-    message_show_next()
-    current.buffer = current.buffer:sub(1)
-    if kanaf.logging then
-      kanaf.history = kanaf.history .. ch
-    end
-    return true
   end
+end
+
+function kanaf.push(name, buffer)
+  table.insert(kanaf.call_stack, lev.util.copy_table(current))
+  kanaf.current.bufname =
+    string.format('%s[%s:%s:%s]', kanaf.current.bufname, kanaf.current.line,
+                  kanaf.current.pos, name)
+  current.line = 1
+  current.pos = 1
+  current.buffer = lev.string.unicode(tostring(buffer) .. '[return]')
+  current.status = 'continue'
+  return true
 end
 
 function kanaf.ret()
@@ -395,6 +483,7 @@ function kanaf.ret()
 
   kanaf.current = c
   current = kanaf.current
+  args = current.args
 end
 
 function kanaf.save_log(id, w, h)
@@ -419,14 +508,27 @@ function kanaf.save_system()
   file:close()
 end
 
+function kanaf.seek_count(count)
+  for i = 1, count do
+    local ch = tostring(current.buffer:index(0))
+    current.buffer = current.buffer:sub(1)
+    if #ch == 0 then
+      return true
+    elseif ch == '\n' then
+      current.line = current.line + 1
+      current.pos = 1
+    else
+      current.pos = current.pos + 1
+    end
+  end
+  return true
+end
+
 function kanaf.seek_to(term)
   local index = current.buffer:find(term)
-  if index < 0 then return '' end
-
-  local value = current.buffer:sub(0, index)
-print('VALUE:', value)
-  current.buffer = current.buffer:sub(index + #lev.string.unicode(term))
-  return value.str
+  if index > 0 then
+    kanaf.seek_count(index)
+  end
 end
 
 function kanaf.seek_to_endl()
@@ -437,9 +539,77 @@ function kanaf.seek_to_endl()
       break
     end
     line = line .. ch
-    current.buffer = current.buffer:sub(1)
+    kanaf.seek_count(1)
   end
   return line
+end
+
+function kanaf.seek_to_endmacro()
+  local str = tostring(current.buffer)
+
+  local next_end = str:find('^%[%s*endmacro[^%]]*%]') or
+                   str:find('[^%\\]%[%s*endmacro[^%]]*%]')
+
+  if not next_end then
+    local msg =
+      string.format('warning at %s : no [endmacro] corresponding with [macro]',
+                    kanaf.get_pos())
+    lev.debug.print(msg)
+    return nil
+  end
+
+  local str = str:sub(1, next_end - 1)
+  kanaf.seek_count(#lev.string.unicode(str))
+  return str
+end
+
+function kanaf.seek_to_next_condition()
+  local str = tostring(current.buffer)
+
+  local next_else = str:find('^%[%s*else[^%]]*%]') or
+                    str:find('[^%\\]%[%s*else[^%]]*%]')
+  local next_end = str:find('^%[%s*endif[^%]]*%]') or
+                   str:find('[^%\\]%[%s*endif[^%]]*%]')
+
+  if not next_end then
+    local msg =
+      string.format('warning at %s : no [endif] corresponding with [if]',
+                    kanaf.get_pos())
+    lev.debug.print(msg)
+    return false
+  end
+
+  local offset = next_end
+  if next_else and next_else < next_end then
+    offset = next_else
+  end
+
+  local count = #lev.string.unicode(str:sub(1, offset - 1))
+  kanaf.seek_count(count)
+end
+
+function kanaf.skip_other_conditions()
+  local str = tostring(current.buffer)
+
+  local next_else = str:find('^%[%s*else[^%]]*%]') or
+                    str:find('[^%\\]%[%s*else[^%]]*%]')
+  local next_end = str:find('^%[%s*endif[^%]]*%]') or
+                   str:find('[^%\\]%[%s*endif[^%]]*%]')
+
+  if not next_end then
+    local msg =
+      string.format('warning at %s : no [endif] coressponding with [if]',
+                    kanaf.get_pos())
+    lev.debug.print(msg)
+    return false
+  end
+
+  if next_else and next_else < next_end then
+    local skip = str:sub(next_else, next_end - 1):gsub('[^\n]', '')
+    str = str:sub(1, next_else - 1) .. skip .. str:sub(next_end)
+    current.buffer = lev.string.unicode(str)
+  end
+  return true
 end
 
 function kanaf.stop()
@@ -464,10 +634,22 @@ function kanaf.wait_key()
     kanaf.key_pressed = true
   end
   if kanaf.key_pressed then
-    layers_lookup.wait_line.visible = false
-    layers_lookup.wait_page.visible = false
+    layers.lookup.wait_line.visible = false
+    layers.lookup.wait_page.visible = false
     kanaf.key_pressed = false
     current.status = 'continue'
+  end
+end
+
+function kanaf.wait_sound()
+  if not mixer then
+    current.status = 'continue'
+  end
+  if tags.wait_slot > 0 then
+    if mixer:slot(tags.wait_slot).is_playing == false then
+      current.status = 'continue'
+      tags.wait_slot = 0
+    end
   end
 end
 

@@ -1,74 +1,83 @@
-; ロード画面
+//
+// ロード画面
+//
 
-*sub_load
-; ロード画面を呼び出すサブルーチン
-[set event="on_right_down" jump="sub_load_end"]
-[map layer="load" create visible]
+#sub_load
+// ロード画面を呼び出す
+[set event="on_right_down" jump="#load_end"]
+[map layer="load" create show]
 [map layer="load" image="bg_load" cx=0 cy=0 alpha=200]
 [map layer="load" image="menu_prev" hover_image="menu_prev_hover"
- rx=-50 y=30 jump="sub_load_end"]
-; ログ番号1
-[map layer="load" image="frame_base" hover_image="frame_hover"
- cx=0 cy=-60 call="sub_load_log1" cond=kanaf.get_log(1)]
-[map layer="load" image="frame_base" cx=0 cy=100 cond=(not kanaf.get_log(1))]
-[map layer="load" cond=kanaf.get_log(1)
- image=kanaf.get_log_image(1) x=100 cy=-60]
-[map layer="load" cond=kanaf.get_log(1)
- text=kanaf.get_log_scene(1) x=230 cy=-80]
-[map layer="load" cond=kanaf.get_log(1)
- text=kanaf.get_log_date(1) x=230 cy=-30]
-; ログ番号2
-[map layer="load" image="frame_base" hover_image="frame_hover"
- cx=0 cy=100 call="sub_load_log2" cond=kanaf.get_log(2)]
-[map layer="load" image="frame_base" cx=0 cy=100 cond=(not kanaf.get_log(2))]
-[map layer="load" cond=kanaf.get_log(2)
- image=kanaf.get_log_image(2) x=100 cy=100]
-[map layer="load" cond=kanaf.get_log(2)
- text=kanaf.get_log_scene(2) x=230 cy=80]
-[map layer="load" cond=kanaf.get_log(2)
- text=kanaf.get_log_date(2) x=230 cy=130]
+ rx=-50 y=30 jump="#sub_load_end"]
+
+// ログ番号1
+[call target="#sub_draw_slot" id=1 lx=80 y=85]
+// ログ番号2
+[call target="#sub_draw_slot" id=2 lx=80 y=210]
+// ログ番号3
+[call target="#sub_draw_slot" id=3 lx=80 y=335]
 [s]
 
-*sub_load_end
-; [set event="on_right_down" call="sub_right" file="on_right"]
+#load_end
+// ロード画面終了
 [map layer="load" delete]
 [return]
 
-*sub_load_yes
-[map layer="load_pop" delete]
+#sub_draw_slot
+// データスロットを描画
+[[
+  args.on_lclick =
+    string.format('[call target="#sub_load_dialog" id=%s]', args.id)
+  args.lx = args.lx or 0
+  args.y = args.y or 0
+  args.font_size = args.font_size or 26
+]]
+[if cond=kanaf.get_log(args.id)]
+  [map layer="load" image="frame_base" hover_image="frame_hover"
+   lx=args.lx y=args.y on_lclick=(args.on_lclick)]
+  [map layer="load" image=kanaf.get_log_image(args.id)
+   lx=(args.lx + 10) y=(args.y + 12)]
+  [map layer="load" text=kanaf.get_log_scene(args.id)
+   lx=(args.lx + 160) y=(args.y + 30) font_size=args.font_size]
+  [map layer="load" text=kanaf.get_log_date(args.id)
+   lx=(args.lx + 160) y=(args.y + 80) font_size=args.font_size]
+[else]
+  [map layer="load" image="frame_base" lx=args.lx y=args.y]
+[endif]
+[return]
+
+#sub_load_dialog
+[set event="on_right_down" jump="#menu_no"]
+[map layer="load_dialog" create show]
+[map layer="load_dialog" image="bg_dialog" cx=0 cy=0 alpha=200]
+[map layer="load_dialog" image="menu_on_load" cx=0 cy=-75]
+[map layer="load_dialog" image="menu_yes" hover_image="menu_yes_hover"
+ cx=-100 cy=50 jump="#menu_yes"]
+[map layer="load_dialog" image="menu_no" hover_image="menu_no_hover"
+ cx=100 cy=50 jump="#menu_no"]
+[s]
+
+#menu_yes
+// ロード処理
+// 不要なレイヤーを消去
+[map layer="load_dialog" delete]
 [map layer="load" delete]
-[map layer="right" delete]
+[map layer="right_menu" delete]
 [map layer="title" delete]
-[image layer="active" visible]
+// イベント初期化
+[set event="on_right" call="on_right#sub_right"]
+[set event="on_wheel_down" call="on_wheel#sub_wheel_down" lock]
+[set event="on_wheel_up" call="on_wheel#sub_wheel_up" lock]
+// メッセージレイヤをアクティベーション
+[msg layer="message" activate]
 [cm]
-[load log id=tmp.load_id]
-[eval code="tmp.load_id = nil"]
+[[
+print('ID', args.id)
+]]
+[load log id=args.id]
+
+#menu_no
+// ロード中止
+[map layer="load_dialog" delete]
 [return]
-
-*sub_load_no
-[map layer="load_pop" delete]
-[return]
-
-*sub_load_pop
-[set event="on_right_down" jump="sub_load_no"]
-[map layer="load_pop" create visible]
-[map layer="load_pop" image="bg_pop" cx=0 cy=0 alpha=200]
-[map layer="load_pop" image="menu_on_load" cx=0 cy=-75]
-[map layer="load_pop" image="menu_yes" hover_image="menu_yes_hover"
- cx=-100 cy=50 jump="sub_load_yes"]
-[map layer="load_pop" image="menu_no" hover_image="menu_no_hover"
- cx=100 cy=50 jump="sub_load_no"]
-[s]
-
-*sub_load_log1
-; ログ番号1をロード
-[eval code="tmp.load_id=1"]
-[jump to="sub_load_pop"]
-[s]
-
-*sub_load_log2
-; ログ番号2をロード
-[eval code="tmp.load_id=2"]
-[jump to="sub_load_pop"]
-[s]
 
