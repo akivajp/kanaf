@@ -8,7 +8,7 @@
 [map layer="load" create show]
 [map layer="load" image="bg_load" cx=0 cy=0 alpha=200]
 [map layer="load" image="menu_prev" hover_image="menu_prev_hover"
- rx=-50 y=30 jump="#sub_load_end"]
+ rx=-50 y=30 jump="#load_end"]
 
 // ログ番号1
 [call target="#sub_draw_slot" id=1 lx=80 y=85]
@@ -38,9 +38,9 @@
   [map layer="load" image=kanaf.get_log_image(args.id)
    lx=(args.lx + 10) y=(args.y + 12)]
   [map layer="load" text=kanaf.get_log_scene(args.id)
-   lx=(args.lx + 160) y=(args.y + 30) font_size=args.font_size]
+   lx=(args.lx + 160) y=(args.y + 20) font_size=args.font_size]
   [map layer="load" text=kanaf.get_log_date(args.id)
-   lx=(args.lx + 160) y=(args.y + 80) font_size=args.font_size]
+   lx=(args.lx + 160) y=(args.y + 70) font_size=args.font_size]
 [else]
   [map layer="load" image="frame_base" lx=args.lx y=args.y]
 [endif]
