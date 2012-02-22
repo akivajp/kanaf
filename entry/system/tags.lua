@@ -11,9 +11,54 @@ tags.wait_slot = 0
 tags.controls = { 'else', 'elseif', 'endif', 'if' }
 tags.macros = { }
 
+-- local functions
+
+local function get_boolean(...)
+  t = { ... }
+  for i, j in pairs(t) do
+    if j == 'true' then return true end
+    if j == '1' then return true end
+    if j == 1 then return true end
+    if j == 'false' then return false end
+    if j == '0' then return false end
+    if j == 0 then return false end
+    if type(j) == 'boolean' then
+      return j
+    end
+  end
+  return nil
+end
+
+local function get_number(...)
+  t = { ... }
+  for i, j in pairs(t) do
+    local val = tonumber(j)
+    if val then
+      return val
+    end
+  end
+  return nil
+end
+
+local function get_string(...)
+  t = { ... }
+  for i, j in pairs(t) do
+    if j then
+      local val = tostring(j)
+      if val then
+        return val
+      end
+    end
+  end
+  return nil
+end
+
+
+-- tag functions
+
 function tags.anchor(param)
-  local text = param.text or param.txt or param[1]
-  local href = param.href
+  local text = get_string(param.text, param.txt)
+  local href = get_string(param.href)
 
   if text then
     local on_click
@@ -21,7 +66,6 @@ function tags.anchor(param)
       on_click = function() lev.util.open(href) end
     end
     message.reserve_clickable('anchor', text, on_click)
---    kanaf.history = kanaf.history .. text
     backlog.add(text)
     message.show_next()
   end
@@ -30,8 +74,8 @@ end
 function tags.backlog(param)
   local show = param.show
   local hide = param.hide
-  local src = param.src or param.bg_image or param.bg
-  local alpha = param.alpha or param.a or param.opaque
+  local src = get_string(param.src, param.bg_image, param.bg)
+  local alpha = get_number(param.alpha, param.a, param.opaque)
   local seek_end = param.seek_end
   local seek_init = param.seek_init
   local seek_next = param.seek_next
@@ -90,9 +134,7 @@ function tags.call(param)
     return false
   end
 
-  kanaf.call(target)
-  kanaf.current.args = param
-  args = param
+  kanaf.call(target, param)
 end
 
 function tags.cm(param)
@@ -103,8 +145,7 @@ end
 function tags.debug(param)
   local enable = param.enable or param.start
   local disable = param.disable or param.stop
-  local message = param.message or param.msg or param.text or
-                  param.txt or param.print or param.string or param.str
+  local message = get_string(param.message, param.msg, param.text, param.txt)
 
   if enable or disable == false then
     system:start_debug()
@@ -113,7 +154,7 @@ function tags.debug(param)
   end
 
   if message then
-    local str = string.format('at %s : %s', kanaf.get_pos(), tostring(message))
+    local str = string.format('at %s : %s', kanaf.get_pos(), message)
     lev.debug.print(str)
     return true
   end
@@ -144,9 +185,9 @@ function tags.endmacro(param)
 end
 
 function tags.eval(param)
-  local code = param.code or param.exp or param.expression or param.expr or param[1]
+  local code = get_string(param.code, param.exp, param.expression, param.expr)
   if code then
-    local f = loadstring(tostring(code))
+    local f = loadstring(code)
     if f then
       f()
     end
@@ -230,23 +271,23 @@ end
 
 function tags.image(param)
   local src = param.src or param.storage or nil
-  local name = param.layer or param.name or nil
-  local x = param.x
-  local lx = param.lx or param.left or param.left_x
-  local cx = param.cx or param.center_x
-  local rx = param.rx or param.right or  param.right_x
-  local y = param.y or param.top or param.top_y
-  local center_y = param.center_y or param.cy
-  local bottom_y = param.bottom_y or param.bottom or param.by
+  local name = get_string(param.layer, param.name)
+  local x = get_number(param.x)
+  local lx = get_number(param.lx, param.left, param.left_x)
+  local cx = get_number(param.cx, param.center_x)
+  local rx = get_number(param.rx, param.right, param.right_x)
+  local y = get_number(param.y, param.top, param.top_y)
+  local cy = get_number(param.center_y, param.cy)
+  local by = get_number(param.bottom_y, param.bottom, param.by)
   local mode = param.mode or param.trans or param.effect or nil
   local duration = param.duration or param.time or 1
   local show = param.show or param.visible
   local hide = param.hide or param.unvisible
-  local alpha = param.alpha or param.a or param.opacity
+  local alpha = get_number(param.alpha, param.a, param.opacity)
 
   local layer = layers.lookup[name]
   if not layer then
-    print(string.format('warning: layer "%s" is not found.', tostring(name)))
+    print(string.format('warning: layer "%s" is not found.', name))
     return false
   end
 
@@ -299,12 +340,12 @@ function tags.image(param)
     layer.x = conf.frame_w - layer.img.w + rx 
   end
   -- Y positioning with centerized axis
-  if center_y and layer.img then
-    layer.y = (conf.frame_h - layer.img.h) / 2 + center_y
+  if cy and layer.img then
+    layer.y = (conf.frame_h - layer.img.h) / 2 + cy
   end
   -- Y positioning from the bottom edge
-  if bottom_y and layer.img then
-    layer.y = conf.frame_h - layer.img.h + bottom_y
+  if by and layer.img then
+    layer.y = conf.frame_h - layer.img.h + by
   end
 end
 
@@ -422,18 +463,18 @@ end
 
 function tags.map(param)
   local clear = param.clear or param.reset
-  local name = param.name or param.layer
-  local x = param.x
-  local lx = param.lx or param.left or param.left_x or 0
-  local cx = param.cx or param.center_x
-  local rx = param.rx or param.right or param.right_x
-  local y = param.y or param.top or param.top_y or 0
-  local cy = param.cy or param.center_y
-  local by = param.by or param.bottom or param.bottom_y
-  local src = param.src or param.image or param.storage or param.img
-  local alpha = param.alpha or param.a or param.opaque or 255
-  local hover = param.hover or param.hover_image
-  local text = param.text or param.string
+  local name = get_string(param.name, param.layer)
+  local x = get_number(param.x)
+  local lx = get_number(param.lx, param.left, param.left_x, 0)
+  local cx = get_number(param.cx, param.center_x)
+  local rx = get_number(param.rx, param.right, param.right_x)
+  local y = get_number(param.y, param.top, param.top_y, 0)
+  local cy = get_number(param.cy, param.center_y)
+  local by = get_number(param.by, param.bottom, param.bottom_y)
+  local src = get_string(param.src, param.image, param.storage, param.img)
+  local alpha = get_number(param.alpha, param.a, param.opaque, 255)
+  local hover = get_string(param.hover, param.hover_image)
+  local text = get_string(param.text, param.string)
   local show = param.show or param.visible
   local hide = param.hide or param.unvisible
   local call = param.call
@@ -484,17 +525,17 @@ function tags.map(param)
   if text then
     local font = lev.font.load()
     font.size = font_size
-    img = lev.image.string(font, tostring(text))
+    img = lev.image.string(font, text)
   elseif src then
     local path = lev.package.resolve(src)
     path = path or lev.package.resolve(src..'.png')
     if not path then
-      print(string.format('warning: image "%s" is not found.', tostring(src)))
+      print(string.format('warning: image "%s" is not found.', src))
       return false
     end
     img = lev.image.load(path)
     if not img then
-      print(string.format('warning: error on loading image "%s"', tostring(path)))
+      print(string.format('warning: error on loading image "%s"', src))
       return false
     end
   end
@@ -524,7 +565,7 @@ function tags.map(param)
       if mixer and lclick_se_path then
         mixer:slot(0):play(lclick_se_path)
       end
-      kanaf.call(call)
+      kanaf.call(call, param)
     end
   elseif jump then
     on_lclick = function()
@@ -579,12 +620,12 @@ function tags.map(param)
       local path = lev.package.resolve(hover)
       path = path or lev.package.resolve(hover..'.png')
       if not path then
-        print(string.format('warning: image "%s" is not found.', tostring(hover)))
+        print(string.format('warning: image "%s" is not found.', hover))
         return false
       end
       hover_img = lev.image.load(path)
       if not hover_img then
-        print(string.format('warning: error on loading image "%s"', tostring(hover)))
+        print(string.format('warning: error on loading image "%s"', hover))
         return false
       end
     else
@@ -599,13 +640,13 @@ function tags.msg(param)
   local all = param.all
   local create = param.create or param.new
   local delete = param.delete or param.del or param.remove
-  local name = param.layer or param.name
+  local name = get_string(param.layer, param.name)
   local activate = param.activate or param.act
   local show = param.show or param.visible
   local hide = param.hide or param.unvisible
-  local x = param.x
-  local y = param.y
-  local w = param.w or param.width
+  local x = get_number(param.x)
+  local y = get_number(param.y)
+  local w = get_number(param.w, param.width)
 
   name = name or 'active'
 
@@ -622,7 +663,7 @@ function tags.msg(param)
   local layer = layers.lookup[name]
   if not all then
     if not layer then
-      local msg = string.format('warning at %s : layer "%s" is not found', kanaf.get_pos(), tostring(name))
+      local msg = string.format('warning at %s : layer "%s" is not found', kanaf.get_pos(), name)
       lev.debug.print(msg)
       return false
     end
@@ -669,14 +710,12 @@ function tags.p(param)
 end
 
 function tags.print(param)
-  local text = param.text or param.txt or param.string
-  local ruby = param.ruby
-  local exp = param.exp or param.expression or param.expr or param.code
+  local text = get_string(param.text, param.txt, param.string)
+  local ruby = get_string(param.ruby)
+  local exp = get_string(param.exp, param.expression, param.expr, param.code)
 
   if text then
     if ruby then
-      text = tostring(text)
-      ruby = tostring(ruby)
       message.reserve_word(text, ruby)
       backlog.add(string.format('[print text="%s" ruby="%s"]', text, ruby))
       message.show_next()
@@ -685,7 +724,7 @@ function tags.print(param)
     end
     return true
   elseif exp then
-    local f = loadstring(string.format('return %s', tostring(exp)))
+    local f = loadstring(string.format('return %s', exp))
     local val
     if not f then
       local msg =
@@ -753,7 +792,7 @@ function tags.set(param)
 
   if event == 'on_exit' or event == 'on_quit' then
     if call then
-      kanaf.current.on_quit = function() kanaf.call(call) end
+      kanaf.current.on_quit = function() kanaf.call(call, param) end
     elseif jump then
       kanaf.current.on_quit = function() kanaf.load_scenario(jump) end
     elseif reset then
@@ -761,7 +800,7 @@ function tags.set(param)
     end
   elseif event == 'on_left_down' or event == 'on_left' or event == 'on_ldown' then
     if call then
-      kanaf.current.on_left_down = function() kanaf.call(call) end
+      kanaf.current.on_left_down = function() kanaf.call(call, param) end
     elseif jump then
       kanaf.current.on_left_down = function() kanaf.load_scenario(jump) end
     elseif reset then
@@ -769,7 +808,7 @@ function tags.set(param)
     end
   elseif event == 'on_right_down' or event == 'on_right' or event == 'on_rdown' then
     if call then
-      kanaf.current.on_right_down = function() kanaf.call(call) end
+      kanaf.current.on_right_down = function() kanaf.call(call, param) end
     elseif jump then
       kanaf.current.on_right_down = function() kanaf.load_scenario(jump) end
     elseif reset then
@@ -778,7 +817,7 @@ function tags.set(param)
   elseif event == 'on_wheel_down' then
     if call then
       kanaf.current.on_wheel_down = function()
-        kanaf.call(call)
+        kanaf.call(call, param)
         if lock then
           kanaf.current.on_wheel_down = nil
         end
@@ -791,7 +830,7 @@ function tags.set(param)
   elseif event == 'on_wheel_up' then
     if call then
       kanaf.current.on_wheel_up = function()
-        kanaf.call(call)
+        kanaf.call(call, param)
         if lock then
           kanaf.current.on_wheel_up = nil
         end
@@ -814,7 +853,7 @@ function tags.skip(param)
 end
 
 function tags.sound(param)
-  local src = param.src or param.source or param.storage or param.file
+  local src = get_string(param.src, param.source, param.storage, param.file)
   local slot = param.slot or 0
   local command = param.command or param.mode
   local clear = param.clear or param.close
@@ -838,7 +877,7 @@ function tags.sound(param)
     path = path or lev.package.resolve(src .. '.ogg')
     path = path or lev.package.resolve(src .. '.wav')
     if (not path) then
-      local msg = string.format('warning at %s : sound file "%s" is not found', kanaf.get_pos(), tostring(src))
+      local msg = string.format('warning at %s : sound file "%s" is not found', kanaf.get_pos(), src)
       lev.debug.print(msg)
       return false
     end
@@ -902,8 +941,7 @@ function tags.sound(param)
 end
 
 function tags.wait(param)
-  local delay = param.time or param.delay or param.duration or 0
-  delay = tonumber(delay)
+  local delay = get_number(param.time, param.delay, param.duration)
   if delay then
     tags.wait_timer:start(0)
     tags.wait_until = delay

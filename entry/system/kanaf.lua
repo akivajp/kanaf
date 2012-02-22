@@ -20,7 +20,7 @@ kanaf.current = { }
 
 -- push current status to the call stack, and jump to the target
 -- target - formatted as "filename#label" format
-function kanaf.call(target)
+function kanaf.call(target, args)
   target = tostring(target)
   local filename = target:match('^([^#]+)')
   local label = target:match('^[^#]*#(.*)')
@@ -74,6 +74,10 @@ function kanaf.call(target)
   current.status = 'continue'
   current.line = 1
   current.pos = 1
+  if args then
+    current.args = args
+    _G.args = args
+  end
   kanaf.seek_count(count)
   return true
 end
@@ -149,11 +153,23 @@ end
 function kanaf.init()
   -- state variables
   kanaf.call_stack = { }
---  kanaf.history = ''
   backlog.init()
   kanaf.logging = false
   kanaf.key_pressed = false
 
+  -- tag parser definition
+  local parser = lev.string.compiler()
+  parser:compile('(? $noparen =) [^\\(\\)]')
+  parser:compile('(? $inparen =) ((? $coparen)|(? $noparen))+')
+  parser:compile('(? $coparen =) \\((? $inparen)\\)')
+  parser:compile("(? $squots =) \'[^\']*\'")
+  parser:compile('(? $dquots =) \"[^\"]*\"')
+  parser:compile('(? $exposed =) [^\\s,\'\"\\(\\)=]+')
+  parser:compile('(? $value =)' ..
+                 '  (? $exposed) | (? $squots) | (? $dquots) | (? $coparen)')
+  kanaf.re_param = parser:compile('((? $exposed))\\s*(=\\s*((? $value)))?')
+
+  -- current status
   kanaf.current = { }
   kanaf.current.buffer = lev.string.create()
   current = kanaf.current
@@ -161,6 +177,7 @@ function kanaf.init()
   current.pos = 1
   current.args = args
 
+  -- load first
   kanaf.load_system()
   kanaf.load_scenario(conf.first_load)
 end
@@ -266,68 +283,36 @@ function kanaf.parse_tag()
 
     if tag_body then
       local params_str = ''
-      while #tag_body > 0 do
-        tag_body = tag_body:gsub('^[%s,]+', '')
-        -- finding property name
-        local pos1, pos2 = tag_body:find('^[^%s,=]+')
-        if not pos2 then break end
-        local property = string.format('["%s"]', tag_body:sub(1, pos2))
---print("PROP:", property)
-        params_str = params_str..property
-        tag_body = tag_body:sub(pos2 + 1)
-
-        local pos1, pos2 = tag_body:find('^%s*%=%s*')
-        if pos1 then
-          -- "property =' is found
-          params_str = params_str .. '='
-          tag_body = tag_body:sub(pos2 + 1)
-
-          if tag_body:find('^%(') then
-            -- "(expression)" is found
-            local pos1, pos2 = tag_body:find('^%b()')
-            if pos1 then
-              params_str = params_str .. tag_body:sub(1, pos2) .. ','
-              tag_body = tag_body:sub(pos2 + 1)
+      local match  = lev.string.gmatch(tag_body, kanaf.re_param)
+      if match then
+        for i, j in ipairs(match) do
+          if j[3].pos >= 0 then
+            local value = j[3].str
+            if value == 'nil' then
+              -- property with nil
+              -- no appends
+            elseif value:sub(1,1) == "'" then
+              -- property with 'string'
+              -- append: ["property"]='string'
+              params_str = params_str .. string.format('["%s"]=%s, ', j[1].str, j[3].str)
+            elseif value:sub(1,1) == '"' then
+              -- property with "string"
+              -- append: ["property"]="string"
+              params_str = params_str .. string.format('["%s"]=%s, ', j[1].str, j[3].str)
+            elseif value:sub(1,1) == '(' then
+              -- property with (expression)
+              -- append: ["property"]=(expression)
+              params_str = params_str .. string.format('["%s"]=%s, ', j[1].str, j[3].str)
             else
-              print("warning: no right paren ')' correspoinding with left paren '('")
-              break
-            end
-          elseif tag_body:find('^"') then
-            -- "string" is found 
-            local pos1, pos2 = tag_body:find('[^%"]%"')
-            if pos2 then
-              params_str = params_str .. tag_body:sub(1, pos2) .. ','
-              tag_body = tag_body:sub(pos2 + 1)
-            else
-              print([[warning: no right double quotation '"' correspoinding with the left]])
-              break
-            end
-          elseif tag_body:find("^'") then
-            -- 'string' is found
-            local pos1, pos2 = tag_body:find("[^%']%'")
-            if pos2 then
-              params_str = params_str .. tag_body:sub(1, pos2) .. ','
-              tag_body = tag_body:sub(pos2 + 1)
-            else
-              print([[warning: no right single quotation (') correspoinding with the left]])
-              break
+              -- property with exposed
+              -- append: ["property"]="exposed"
+              params_str = params_str .. string.format('["%s"]="%s", ', j[1].str, j[3].str)
             end
           else
-            -- other expression is found
-            local pos1, pos2 = tag_body:find("[%s,]+")
-            if pos1 then
-              -- "param ," form is found
-              params_str = params_str .. tag_body:sub(1, pos1-1) .. ','
-              tag_body = tag_body:sub(pos2 + 1)
-            else
-              -- "param$" form is found
-              params_str = params_str .. tag_body
-              break
-            end
+            -- property without value
+            -- append: ["property"]=true,
+            params_str = params_str .. string.format('["%s"]=true, ', j[1].str)
           end
-        else
-          -- property without value is found
-          params_str = params_str .. '=true,'
         end
       end
       if params_str then

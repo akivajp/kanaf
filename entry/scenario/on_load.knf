@@ -26,23 +26,21 @@
 #sub_draw_slot
 // データスロットを描画
 [[
-  args.on_lclick =
-    string.format('[call target="#sub_load_dialog" id=%s]', args.id)
   args.lx = args.lx or 0
   args.y = args.y or 0
   args.font_size = args.font_size or 26
 ]]
-[if cond=kanaf.get_log(args.id)]
+[if cond=(kanaf.get_log(args.id))]
   [map layer="load" image="frame_base" hover_image="frame_hover"
-   lx=args.lx y=args.y on_lclick=(args.on_lclick)]
-  [map layer="load" image=kanaf.get_log_image(args.id)
+   lx=(args.lx) y=(args.y) call="#sub_load_dialog" load_id=(args.id)]
+  [map layer="load" image=(kanaf.get_log_image(args.id))
    lx=(args.lx + 10) y=(args.y + 12)]
-  [map layer="load" text=kanaf.get_log_scene(args.id)
-   lx=(args.lx + 160) y=(args.y + 20) font_size=args.font_size]
-  [map layer="load" text=kanaf.get_log_date(args.id)
-   lx=(args.lx + 160) y=(args.y + 70) font_size=args.font_size]
+  [map layer="load" text=(kanaf.get_log_scene(args.id))
+   lx=(args.lx + 160) y=(args.y + 20) font_size=(args.font_size)]
+  [map layer="load" text=(kanaf.get_log_date(args.id))
+   lx=(args.lx + 160) y=(args.y + 70) font_size=(args.font_size)]
 [else]
-  [map layer="load" image="frame_base" lx=args.lx y=args.y]
+  [map layer="load" image="frame_base" lx=(args.lx) y=(args.y)]
 [endif]
 [return]
 
@@ -71,10 +69,7 @@
 // メッセージレイヤをアクティベーション
 [msg layer="message" activate]
 [cm]
-[[
-print('ID', args.id)
-]]
-[load log id=args.id]
+[load log id=(args.load_id)]
 
 #menu_no
 // ロード中止

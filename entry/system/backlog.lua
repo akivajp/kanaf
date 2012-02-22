@@ -49,7 +49,6 @@ function backlog.fill_message(index)
 end
 
 function backlog.get_end()
-  backlog.logmsgs = { }
   local h = 0
 
   for i = #kanaf.history, 1, -1 do
@@ -108,7 +107,10 @@ function backlog.seek_next()
 end
 
 function backlog.seek_prev()
-  backlog.seek(backlog.view_index - 1)
+  backlog.view_index = backlog.view_index - 1
+  if backlog.view_index <= 0 then
+    backlog.view_index = 1
+  end
 end
 
 function backlog.show()

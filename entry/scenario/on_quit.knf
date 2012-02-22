@@ -10,9 +10,9 @@
 [map layer='quit' create visible]
 [map layer='quit' image='bg_dialog' cx=0 cy=0 alpha=200]
 [map layer='quit' image='menu_on_quit' cx=0 cy=-75]
-[map layer='quit' image='menu_yes' hover='menu_yes_hover.png' cx=-100 cy=50
+[map layer='quit' image='menu_yes' hover='menu_yes_hover' cx=-100 cy=50
  jump='#sub_quit_yes' hover_se='se_hover']
-[map layer='quit' image='menu_no'  hover='menu_no_hover.png'  cx=100  cy=50
+[map layer='quit' image='menu_no'  hover='menu_no_hover'  cx=100  cy=50
  jump='#sub_quit_no' hover_se='se_hover']
 [s]
 
