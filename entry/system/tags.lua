@@ -53,7 +53,6 @@ local function get_string(...)
   return nil
 end
 
-
 -- tag functions
 
 function tags.anchor(param)
@@ -65,26 +64,24 @@ function tags.anchor(param)
     if href then
       on_click = function() lev.util.open(href) end
     end
-    message.reserve_clickable('anchor', text, on_click)
+    message.reserve_clickable(text, on_click)
     backlog.add(text)
     message.show_next()
   end
 end
 
 function tags.backlog(param)
-  local show = param.show
-  local hide = param.hide
+  local show = get_boolean(param.show)
+  local hide = get_boolean(param.hide)
   local src = get_string(param.src, param.bg_image, param.bg)
   local alpha = get_number(param.alpha, param.a, param.opaque)
-  local seek_end = param.seek_end
-  local seek_init = param.seek_init
-  local seek_next = param.seek_next
-  local seek_prev = param.seek_prev
+  local seek_end = get_boolean(param.seek_end)
+  local seek_init = get_boolean(param.seek_init)
+  local seek_next = get_boolean(param.seek_next)
+  local seek_prev = get_boolean(param.seek_prev)
 
-  if not layers.lookup.backlog then
-    local img = lev.image.map()
-    layers.add(img, {name = 'backlog', texture = true})
-    layers.set_bg(nil, {name = 'backlog', texture = true, visible = true})
+  if not backlog.fg then
+    backlog.init()
   end
 
   if seek_end then
@@ -113,14 +110,14 @@ function tags.backlog(param)
       lev.debug.print(msg)
     end
 
-    local img = lev.image.load(path)
+    local img = lev.bitmap(path)
     if img then
-      layers.lookup.backlog.bg.img = img
+      backlog.bg.img = img
     end
   end
 
   if alpha then
-    layers.lookup.backlog.bg.alpha = alpha
+    backlog.bg.alpha = alpha
   end
 end
 
@@ -207,9 +204,9 @@ function tags.font(param)
   local bigger = param.bigger or param.big
   local smaller = param.smaller or param.small
 
-  local active = layers.lookup.active
+  local active = message.active
   if not active then
-    local msg = string.format('warning at %s : no message are activated', kanaf.get_pos())
+    kanaf.warning('no message are activated')
     lev.debug.print(msg)
     return false
   end
@@ -223,9 +220,9 @@ function tags.font(param)
   end
 
   if type(color) == 'string' then
-    color = lev.prim.color(color)
+    color = lev.color(color)
   elseif type(color) == 'number' then
-    color = lev.prim.color{ code = color }
+    color = lev.color{ code = color }
   else
     color = nil
   end
@@ -270,7 +267,8 @@ tags['if'] = function(param)
 end
 
 function tags.image(param)
-  local src = param.src or param.storage or nil
+  local src = get_string(param.src, param.storage)
+  local create = get_boolean(param.create)
   local name = get_string(param.layer, param.name)
   local x = get_number(param.x)
   local lx = get_number(param.lx, param.left, param.left_x)
@@ -284,6 +282,10 @@ function tags.image(param)
   local show = param.show or param.visible
   local hide = param.hide or param.unvisible
   local alpha = get_number(param.alpha, param.a, param.opacity)
+
+  if create and name then
+    layers.create(name)
+  end
 
   local layer = layers.lookup[name]
   if not layer then
@@ -312,17 +314,17 @@ function tags.image(param)
   end
 
   if mode then
-    if layer.img and layer.img.type_name ~= 'lev.image.transition' then
-      layer.img = lev.image.transition(layer.img)
+    if layer.img and layer.img.type_name ~= 'lev.transition' then
+      layer.img = lev.transition(layer.img)
     end
 
     layer.img:set_next { src_path, duration = duration, mode = mode }
   else
     if src_path then
-      if layer.img and layer.img.type_name == 'lev.image.transition' then
+      if layer.img and layer.img.type_name == 'lev.transition' then
         layer.img:set_current(src_path)
       else
-        layer.img = lev.image.transition(src_path)
+        layer.img = lev.transition(src_path)
       end
     end
   end
@@ -349,6 +351,15 @@ function tags.image(param)
   end
 end
 
+function tags.item(param)
+  local text = param.text
+  local jump = get_string(param.jump, param.goto)
+
+  if text and jump then
+    layers.select.add_item(text, jump)
+  end
+end
+
 function tags.jump(param)
   local target = param.target or param.to
   if target then
@@ -359,7 +370,7 @@ end
 function tags.l(param)
   kanaf.key_pressed = false
   kanaf.current.status = 'wait_key'
-  layers.lookup.wait_line.visible = true
+  layers.lookup['top.wait_line'].visible = true
 end
 
 function tags.link(param)
@@ -375,7 +386,7 @@ function tags.link(param)
     local path = lev.package.resolve(img_src)
     path = path or lev.package.resolve(img_src .. '.png')
     if path then
-      img = lev.image.load(path)
+      img = lev.bitmap(path)
     else
       print(string.format('waring: image file "%s" is not found', img_src))
     end
@@ -384,7 +395,7 @@ function tags.link(param)
     local path = lev.package.resolve(hover_src)
     path = lev.package.resolve(hover_src .. '.png')
     if path then
-      hover = lev.image.load(path)
+      hover = lev.bitmap(path)
     else
       print(string.format('waring: image file "%s" is not found', hover_src))
     end
@@ -462,7 +473,8 @@ function tags.macro(param)
 end
 
 function tags.map(param)
-  local clear = param.clear or param.reset
+  local activate = get_boolean(param.activate, param.active, param.act)
+  local clear = get_boolean(param.clear, param.reset)
   local name = get_string(param.name, param.layer)
   local x = get_number(param.x)
   local lx = get_number(param.lx, param.left, param.left_x, 0)
@@ -476,7 +488,7 @@ function tags.map(param)
   local hover = get_string(param.hover, param.hover_image)
   local text = get_string(param.text, param.string)
   local show = param.show or param.visible
-  local hide = param.hide or param.unvisible
+  local hide = get_boolean(param.hide, param.unvisible)
   local call = param.call
   local jump = param.jump or param.goto
   local create = param.create
@@ -487,9 +499,19 @@ function tags.map(param)
   local lclick_se = param.lclick_se or param.lclick_sound
   local str_on_lclick = param.on_lclick or param.on_left_click
 
+  if activate then
+    layers.active_map = name
+  end
+
+  if not name then
+    name = layers.active_map
+  end
+
   if create and name then
-    layers.add(lev.image.map(),
-               {name = name, texture = true, x = 0, y = 0})
+    layers.create(name)
+    layers.lookup[name].img = lev.map()
+--    layers.add(lev.map(),
+--               {name = name, x = 0, y = 0})
   end
 
   if delete and name then
@@ -513,8 +535,8 @@ function tags.map(param)
     layer.visible = false
   end
 
-  if not layer.img or layer.img.type_name ~= 'lev.image.map' then
-    layer.img = lev.image.map()
+  if not layer.img or layer.img.type_name ~= 'lev.map' then
+    layer.img = lev.map()
   end
 
   if clear then
@@ -523,9 +545,12 @@ function tags.map(param)
 
   local img = nil
   if text then
-    local font = lev.font.load()
+    local font = lev.font()
+--print('FONT:', font)
     font.size = font_size
-    img = lev.image.string(font, text)
+--print('SIZE:', font.size)
+    img = font:rasterize(text)
+--print('RASTERIZED')
   elseif src then
     local path = lev.package.resolve(src)
     path = path or lev.package.resolve(src..'.png')
@@ -533,7 +558,7 @@ function tags.map(param)
       print(string.format('warning: image "%s" is not found.', src))
       return false
     end
-    img = lev.image.load(path)
+    img = lev.bitmap(path)
     if not img then
       print(string.format('warning: error on loading image "%s"', src))
       return false
@@ -575,9 +600,11 @@ function tags.map(param)
       kanaf.load_scenario(jump)
     end
   else
-    on_lclick = function()
-      if mixer and lclick_se_path then
-        mixer:slot(0):play(lclick_se_path)
+    if mixer and lclick_se_path then
+      on_lclick = function()
+        if mixer and lclick_se_path then
+          mixer:slot(0):play(lclick_se_path)
+        end
       end
     end
   end
@@ -623,7 +650,7 @@ function tags.map(param)
         print(string.format('warning: image "%s" is not found.', hover))
         return false
       end
-      hover_img = lev.image.load(path)
+      hover_img = lev.bitmap(path)
       if not hover_img then
         print(string.format('warning: error on loading image "%s"', hover))
         return false
@@ -642,17 +669,17 @@ function tags.msg(param)
   local delete = param.delete or param.del or param.remove
   local name = get_string(param.layer, param.name)
   local activate = param.activate or param.act
-  local show = param.show or param.visible
+  local show = get_boolean(param.show, param.visible)
   local hide = param.hide or param.unvisible
   local x = get_number(param.x)
   local y = get_number(param.y)
   local w = get_number(param.w, param.width)
 
-  name = name or 'active'
+--  name = name or 'active'
 
   if create and name then
-    layers.add(lev.image.layout(w or conf.frame_w)
-               {name = name, texture = true, x = x or 0, y = y or 0})
+    layers.add(lev.layout(w or conf.frame_w)
+               {name = name, x = x or 0, y = y or 0})
   end
 
   if delete and name then
@@ -660,7 +687,8 @@ function tags.msg(param)
     return true
   end
 
-  local layer = layers.lookup[name]
+--  local layer = layers.lookup[name]
+  local layer = message.active
   if not all then
     if not layer then
       local msg = string.format('warning at %s : layer "%s" is not found', kanaf.get_pos(), name)
@@ -706,7 +734,8 @@ end
 function tags.p(param)
   kanaf.key_pressed = false
   kanaf.current.status = 'wait_key'
-  layers.lookup.wait_page.visible = true
+  layers.lookup['top.wait_page'].visible = true
+  kanaf.request_redraw = true
 end
 
 function tags.print(param)
@@ -752,6 +781,9 @@ tags['return'] = function()
 end
 
 function tags.s(param)
+  if layers.select.items then
+    layers.select.show()
+  end
   kanaf.key_pressed = false
   kanaf.current.status = 'stop'
 end
@@ -772,13 +804,18 @@ function tags.save(param)
 end
 
 function tags.screenshot(param)
-  kanaf.thumbnail = screen.screen_shot
+  kanaf.thumbnail = screen.screenshot
 end
 
 function tags.select(param)
-  kanaf.logging = false
-  message.hide_all()
-  message.activate('select')
+  local clear = get_boolean(param.clear, param.start)
+
+  if clear then
+    layers.select.clear()
+  end
+--  kanaf.logging = false
+--  message.hide_all()
+--  message.activate('select')
 end
 
 function tags.set(param)
@@ -844,11 +881,21 @@ function tags.set(param)
 end
 
 function tags.skip(param)
-  local once = param.once or param.one
+  local once = get_boolean(param.once, param.one)
+  local auto = get_boolean(param.auto)
+  local toggle = get_boolean(param.toggle)
 
   if once then
     kanaf.key_pressed = true
     kanaf.skip_once = true
+  end
+
+  if auto == true then
+    kanaf.skip_auto = true
+  elseif auto == false then
+    kanaf.skip_auto = false
+  elseif toggle then
+    kanaf.skip_auto = not(kanaf.skip_auto)
   end
 end
 

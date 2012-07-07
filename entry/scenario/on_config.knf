@@ -1,0 +1,48 @@
+//
+// コンフィグ画面処理
+//
+
+#sub_config
+[set event="on_right" jump="#config_end"]
+[map layer="config" create clear hide]
+[map layer="config" src="bg_config" cx=0 cy=0 alpha=200]
+[map layer="config" src="item_screentype" lx=30 y=50]
+[if cond=(kanaf.fullscreen)]
+  [map layer="config" src="menu_window" hover="menu_window_hover"
+   cx=0 y=50 jump="#toggle_screen" click_se="se_yes"]
+  [map layer="config" src="menu_fullscreen_hover" rx=(-30) y=50]
+[else]
+  [map layer="config" src="menu_window_hover" cx=0 y=50]
+  [map layer="config" src="menu_fullscreen" hover="menu_fullscreen_hover"
+   rx=(-30) y=50 jump="#toggle_screen" click_se="se_yes"]
+[endif]
+[map layer="config" src="item_autoskip" lx=30 y=120]
+[if cond=(kanaf.skip_auto)]
+  [map layer="config" src="menu_is_enabled" hover="menu_disable_hover"
+   cx=90 y=120 jump="#toggle_autoskip" lclick_se="se_yes"]
+  [map layer="config" src="icon_check" cx=155 y=120]
+[else]
+  [map layer="config" src="menu_is_disabled" hover="menu_enable_hover"
+   cx=90 y=120 jump="#toggle_autoskip" lclick_se="se_yes"]
+[endif]
+[map layer="config" src="menu_prev" hover="menu_prev_hover"
+ rx=(-50) by=(-50) jump="#config_end"]
+[map layer="config" show above]
+[s]
+
+#config_end
+[map layer="config" hide]
+[return]
+
+#toggle_autoskip
+[[
+  kanaf.skip_auto = not(kanaf.skip_auto)
+]]
+[jump to="#sub_config"]
+
+#toggle_screen
+[[
+  kanaf.fullscreen = not(kanaf.fullscreen)
+]]
+[jump to="#sub_config"]
+

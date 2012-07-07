@@ -21,13 +21,13 @@ kanaf.current = { }
 -- push current status to the call stack, and jump to the target
 -- target - formatted as "filename#label" format
 function kanaf.call(target, args)
+--  print('CALLING', target, args)
   target = tostring(target)
   local filename = target:match('^([^#]+)')
   local label = target:match('^[^#]*#(.*)')
 
   if #kanaf.call_stack > 100 then
-    local msg = string.format('warning at %s : Stack over flow !', kanaf.get_pos())
-    lev.debug.print(msg)
+    kanaf.warning('Stack over flow !')
     return false
   end
 
@@ -38,14 +38,16 @@ function kanaf.call(target, args)
               or lev.package.resolve(filename .. '.knf')
               or lev.package.resolve(filename .. '.txt')
   if not found then
-    local msg =
-      string.format('warning at %s : Neither "%s.knf" nor "%s.txt" is not found.',
-                    kanaf.get_pos(), filename, filename)
-    lev.debug.print(msg)
+    kanaf.warning('Neither "%s.knf" nor "%s.txt" is not found.', filename, filename)
     return false
   end
 
   local infile = io.open(tostring(found), 'r')
+--  local infile = lev.fs.open(tostring(found), 'r')
+  if not infile then
+    kanaf.warning("can't open the file \"%s\".", tostring(found))
+    return false
+  end
   local content = infile:read('*a')
   local count = 0
 --  if target then
@@ -56,10 +58,7 @@ function kanaf.call(target, args)
     if pos then
       count = #lev.string.unicode(content:sub(1, pos - 1))
     else
-      local msg =
-        string.format('warning at %s : Label "%s" is not found on file "%s".',
-                      label, filename)
-      lev.debug.print(msg)
+      kanaf.warning('Label "%s" is not found on file "%s"', label, filename)
       return false
     end
   end
@@ -79,6 +78,7 @@ function kanaf.call(target, args)
     _G.args = args
   end
   kanaf.seek_count(count)
+--  print('CALLED!', current.filename, label)
   return true
 end
 
@@ -154,6 +154,7 @@ function kanaf.init()
   -- state variables
   kanaf.call_stack = { }
   backlog.init()
+  layers.select.init()
   kanaf.logging = false
   kanaf.key_pressed = false
 
@@ -197,14 +198,20 @@ function kanaf.load_scenario(target)
               or lev.package.resolve(filename .. '.knf')
               or lev.package.resolve(filename .. '.txt')
   if not found then
-    local msg =
-      string.format('warning at %s : Neither "%s.knf" nor "%s.txt" is not found.',
-                    kanaf.get_pos(), filename, filename)
-    lev.debug.print(msg)
+--    local msg =
+--      string.format('warning at %s : Neither "%s.knf" nor "%s.txt" is not found.',
+--                    kanaf.get_pos(), filename, filename)
+--    lev.debug.print(msg)
+    kanaf.warning('Neigher "%s.knf" nor "%s.txt" is not found.', filename, filename)
     return false
   end
 
   local infile = io.open(tostring(found), 'r')
+--  local infile = lev.fs.open(tostring(found), 'r')
+  if not infile then
+    kanaf.warning('can\t open the file "%s".', tostring(found))
+    return false
+  end
   local content = infile:read('*a')
   local count = 0
   if label then
@@ -213,7 +220,8 @@ function kanaf.load_scenario(target)
     if pos then
       count = #lev.string.unicode(content:sub(1, pos - 1))
     else
-      print(string.format('error: label "%s" is not found on file "%s"', label, filename))
+      kanaf.warning('label "%s" is not found on file "%s"', label, filename)
+      print('FILENAME, LABEL:', current.filename, label)
       return false
     end
   end
@@ -249,6 +257,7 @@ function kanaf.load_log(id)
   kanaf.current = last_status
   current = last_status
   -- loading
+  layers.hide_sub('fg')
   kanaf.load_scenario(log.filename .. '#' .. log.label)
 end
 
@@ -261,14 +270,13 @@ function kanaf.load_system()
     sys = { }
   end
   sys.play_count = (sys.play_count or 0) + 1
-  sys.passed_labels = { }
+  sys.passed_labels = sys.passed_labels or { }
 end
 
 -- extract the tag and parse it
 -- return 1 : tag name
 -- return 2 : tag parameters
-function kanaf.parse_tag()
-  local tag = kanaf.find_tag('[', ']')
+function kanaf.parse_tag(tag)
 --print('TAG:', tag)
   local code = tag:match('^%[(.*)%]$')
   if code then
@@ -334,12 +342,28 @@ end
 
 function kanaf.proc_next()
 --print('STATUS:', current.status)
+
+  if kanaf.fullscreen then
+    screen:set_fullscreen(true)
+  else
+    screen:set_fullscreen(false)
+  end
+
   if current.status == 'continue' then
     kanaf.proc_token()
-    while current.status == 'continue' and (kanaf.skip_mode or kanaf.skip_once) do
+    if kanaf.skip_mode then
+      kanaf.skip_once = true
+    end
+    while current.status == 'continue' and kanaf.skip_once do
       kanaf.proc_token()
     end
-    kanaf.skip_once = false
+    if kanaf.skip_auto and log.label and
+       sys.passed_labels[log.filename..'#'..log.label] then
+--print('AUTO SKIP!')
+      kanaf.skip_once = true
+    else
+      kanaf.skip_once = false
+    end
   elseif current.status == 'stop' then
     return kanaf.stop()
   elseif current.status == 'wait' then
@@ -363,7 +387,8 @@ function kanaf.proc_token()
     end
     if ch == '[' then
       current.new_line = false
-      local tag_name, params = kanaf.parse_tag()
+      local tag = kanaf.find_tag('[', ']')
+      local tag_name, params = kanaf.parse_tag(tag)
 --print('TAG:', tag_name)
       params = params or { }
       if tags[tag_name] then
@@ -436,7 +461,11 @@ function kanaf.proc_token()
       return true
     else
       current.new_line = false
-      message.reserve_word(ch)
+      local auto_fill = true
+      if ch == '、' or ch == '。' then
+        auto_fill = false
+      end
+      message.reserve_word(ch, auto_fill)
       message.show_next()
       kanaf.seek_count(1)
       if kanaf.logging then
@@ -618,9 +647,13 @@ function kanaf.wait_key()
   if kanaf.skip_mode then
     kanaf.key_pressed = true
   end
+  if kanaf.skip_auto and log.label and
+     sys.passed_labels[log.filename..'#'..log.label] then
+    kanaf.key_pressed = true
+  end
   if kanaf.key_pressed then
-    layers.lookup.wait_line.visible = false
-    layers.lookup.wait_page.visible = false
+    layers.lookup['top.wait_line'].visible = false
+    layers.lookup['top.wait_page'].visible = false
     kanaf.key_pressed = false
     current.status = 'continue'
   end
@@ -636,5 +669,11 @@ function kanaf.wait_sound()
       tags.wait_slot = 0
     end
   end
+end
+
+function kanaf.warning(format, ...)
+  local msg = string.format(format, ...)
+  local msg = string.format('warning at %s : %s', kanaf.get_pos(), msg)
+  lev.debug.print(msg)
 end
 

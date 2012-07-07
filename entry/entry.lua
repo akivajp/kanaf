@@ -3,12 +3,31 @@
 require 'lev.debug'
 require 'lev.draw'
 require 'lev.image'
+require 'lev.map'
 require 'lev.package'
 require 'lev.prim'
 require 'lev.sound'
 require 'lev.system'
 require 'lev.timer'
 require 'lev.util'
+require 'debug'
+
+-- System Initialization
+
+system = lev.system()
+
+-- Configuration
+lev.require 'config'
+
+-- Initialization of Important instances
+mixer = system:mixer()
+screen = lev.screen { caption = conf.caption,
+                      w = conf.frame_w,
+                      h = conf.frame_h }
+--screen = system:screen { caption = conf.caption,
+--                         w = conf.frame_w,
+--                         h = conf.frame_h }
+
 
 -- Path Settings
 lev.package.clear_search()
@@ -27,46 +46,12 @@ lev.require 'system/colors'
 lev.require 'system/kanaf'
 lev.require 'system/layers'
 lev.require 'system/message'
+lev.require 'system/select'
 
--- Initialize
-
-system = lev.system()
-mixer = system:mixer()
-
--- Configuration
-conf = conf or {}
-conf.app_id = 'kanaf'
-conf.backlog_x = 30
-conf.backlog_y = 30
-conf.backlog_w = 580
-conf.backlog_h = 420
-conf.caption = 'Kanaf Scripting System'
-conf.fg_color = white
-conf.fps = 50
---conf.font_size = 17
-conf.font_size = 18
-conf.first_load = 'start'
-conf.frame_h = 480
-conf.frame_w = 640
-conf.message_x = 15
-conf.message_y = 320
-conf.message_w = 610
-conf.message_margin = 5
-conf.num_layers = 5
-conf.save_dir = 'savedata'
-conf.save_log = 'log'
-conf.save_system = 'system'
-conf.select_x = 30
-conf.select_y = 30
-conf.select_w = 580
-conf.thumb_w = 128
-conf.thumb_h = 96
-conf.wait_line_icon = 'wait_line.png'
-conf.wait_page_icon = 'wait_page.png'
-
-if not lev.font.load() then
+if not lev.font() then
   error('NO FONTS ARE FOUND!')
 end
+--lev.debug.print(lev.font().path)
 
 -- Mixer Slots
 
@@ -78,66 +63,63 @@ if mixer then
 end
 
 -- Layers
-
-layers.init()
 -- background layer
-layers.add(lev.image.transition(),
-           {name = 'bg', visible = true, texture = true})
-layers.lookup['0'] = layers.lookup.bg
-layers.lookup[ 0 ] = layers.lookup.bg
+layers.init()
+layers.create('bg')
 -- foreground layers
-for i = 1, conf.num_layers do
-  layers.add(lev.image.transition(), {name = tostring(i), alias = i, x = 0, y = 0, texture = true})
-end
--- message foreground
-layers.add(lev.image.layout(conf.message_w - conf.message_margin * 2),
-           {name = 'message', alias='msg', x = conf.message_x + conf.message_margin,
-            y = conf.message_y + conf.message_margin, texture = true})
--- message background
-layers.set_bg(lev.image.load(lev.package.resolve('message_bg.png')),
-              {name = 'message', texture = true, visible = true, alpha = 200})
---layers.set_bg(lev.image.create(conf.frame_w, conf.frame_h),
---              {name = 'message', texture = true, visible = true})
---layers.lookup.message.bg.img:fill_rect(conf.message_x, conf.message_y, conf.message_w, conf.message_h,
---                                       lev.prim.color(0, 0, 255, 128))
-layers.lookup.message.img.font.size = conf.font_size
-layers.lookup.message.img.color = conf.fg_color or white
--- selection foreground
-layers.add(lev.image.layout(conf.frame_w - 20),
-           {name = 'select', alias='sel', x = conf.select_x, y = conf.select_y, texture = true})
--- selection background
-layers.set_bg(lev.image.load(lev.package.resolve('select_bg.png')),
-              {name = 'select', texture = true, visible = true, alpha = 200})
---layers.set_bg(lev.image.create(conf.frame_w, conf.frame_h),
---              {name = 'select', texture = true, visible = true})
---layers.lookup.select.bg.img:fill_rect(10, 5, conf.frame_w - 20, conf.frame_h - 10, lev.prim.color(200, 0, 255, 128))
-layers.lookup.select.img.font.size = conf.font_size
-layers.lookup.select.img.color = conf.fg_color or white
-
+layers.create('fg')
+-- text layers
+layers.create('text')
+-- message layer ( sub layer of text )
+layers.create('text.message.print')
+layers.lookup['text.message.print'].img =
+  lev.layout(conf.message_w - conf.message_margin * 2)
+layers.lookup['text.message.print'].x =
+  conf.message_x + conf.message_margin
+layers.lookup['text.message.print'].y =
+  conf.message_y + conf.message_margin
+layers.lookup['text.message'].img =
+  lev.bitmap(lev.package.resolve('message_bg.png'))
+layers.lookup['text.message.print'].img.font.size = conf.font_size
+layers.lookup['text.message.print'].img.fg_color = conf.fg_color
+message.activate('text.message.print')
+-- select layer ( sub layer of text )
+--layers.create('text.select.print')
+--layers.lookup['text.select.print'].img =
+--  lev.layout(conf.frame_w - 20)
+--layers.lookup['text.select.print'].x = conf.select_x
+--layers.lookup['text.select.print'].y = conf.select_y
+---- selection background
+--layers.lookup['text.select'].img =
+--  lev.bitmap(lev.package.resolve('select_bg.png'))
+--layers.lookup['text.select'].alpha = 200
+--layers.lookup['text.select.print'].img.font.size = conf.font_size
+--layers.lookup['text.select.print'].img.fg_color = conf.fg_color
+--layers.lookup['text.select'].visible = false
 -- wait line icon
+layers.create('top.wait_line')
 local icon_path = lev.package.resolve(conf.wait_line_icon)
 if not icon_path then
   error(string.format('%s is not found'), conf.wait_line_icon)
 end
-layers.add(lev.image.load(icon_path),
-           {name = 'wait_line', visible = false, x = 590, y = 440, texture = true})
+layers.lookup['top.wait_line'].img = lev.bitmap(icon_path)
+layers.lookup['top.wait_line'].x = 590
+layers.lookup['top.wait_line'].y = 440
 -- wait page icon
+layers.create('top.wait_page')
 local icon_path = lev.package.resolve(conf.wait_page_icon)
 if not icon_path then
   error(string.format('%s is not found'), conf.wait_page_icon)
 end
-layers.add(lev.image.load(icon_path),
-           {name = 'wait_page', visible = false, x = 590, y = 440, texture = true})
+layers.lookup['top.wait_page'].img = lev.bitmap(icon_path)
+layers.lookup['top.wait_page'].x = 590
+layers.lookup['top.wait_page'].y = 440
 
--- Design
-
-window = system:window { caption = conf.caption, w = conf.frame_w, h = conf.frame_h, f = 'hidden' }
-screen = window:screen()
-
--- Controls
+-- Control Init
 kanaf.init()
 
-window.on_close = function()
+screen.on_close = function()
+print('ON CLOSE')
   if kanaf.current.on_quit then
     kanaf.current.on_quit()
   else
@@ -145,11 +127,11 @@ window.on_close = function()
   end
 end
 
-window.on_key_down = function(e)
+screen.on_key_down = function(e)
 --  print('down', e.key, e.keycode, e.id)
   if e.key == 'escape' then
-    if window.on_right_down then
-      window.on_right_down()
+    if screen.on_right_down then
+      screen.on_right_down()
     end
 --    system:quit()
   elseif e.key == 'lctrl' then
@@ -159,13 +141,13 @@ window.on_key_down = function(e)
   elseif e.key == 'rctrl' then
     kanaf.skip_mode = true
   elseif e.key == 'return' then
-    window.on_left_down(e)
+    screen.on_left_down(e)
   elseif e.key == 'space' then
-    window.on_left_down(e)
+    screen.on_left_down(e)
   end
 end
 
-window.on_key_up = function(e)
+screen.on_key_up = function(e)
 --  print('up', e.key, e.keycode)
   if e.key == 'lctrl' then
     kanaf.skip_mode = false
@@ -174,7 +156,8 @@ window.on_key_up = function(e)
   end
 end
 
-window.on_left_down = function(e)
+screen.on_left_down = function(e)
+--print('ON LEFT DOWN', e.x, e.y)
   if kanaf.current.on_left_down then
     kanaf.current.on_left_down()
   else
@@ -183,69 +166,60 @@ window.on_left_down = function(e)
       kanaf.key_pressed = true
     end
     if kanaf.current.status == 'continue' then
-      kanaf.skip_once = true
+--      if message.active.visible then
+        kanaf.skip_once = true
+--      end
     end
 
     -- clickable images' process
     local lay = layers.get_top_visible()
-    if lay then
-      if lay.img.type_name == 'lev.image.layout' then
+    if lay and lay.img then
+      if lay.img.type_name == 'lev.layout' then
         lay.img:on_left_click(e.x - lay.x, e.y - lay.y)
-      elseif lay.img.type_name == 'lev.image.map' then
+      elseif lay.img.type_name == 'lev.map' then
+--print('LEFT DOWN MAP', e.x, e.y)
         lay.img:on_left_click(e.x - lay.x, e.y - lay.y)
       end
     end
   end
 end
 
-window.on_right_down = function(e)
+screen.on_right_down = function(e)
   if kanaf.current.on_right_down then
     kanaf.current.on_right_down()
   end
 end
 
-window.on_motion = function(e)
+screen.on_motion = function(e)
+--print('ON MOTION', e.x, e.y)
   -- clickable images' process
   local lay = layers.get_top_visible()
-  if lay then
-    if lay.img.type_name == 'lev.image.layout' then
+--print('TOP', lay.name)
+  if lay and lay.img then
+    if lay.img.type_name == 'lev.layout' then
       lay.img:on_hover(e.x - lay.x, e.y - lay.y)
-    elseif lay.img.type_name == 'lev.image.map' then
+    elseif lay.img.type_name == 'lev.map' then
       lay.img:on_hover(e.x - lay.x, e.y - lay.y)
     end
   end
 end
 
---sw = lev.stop_watch()
+sw = lev.stop_watch()
 screen.redraw = function(e)
+  kanaf.request_redraw = false
 --  if sw then sw:start() end
-  screen:clear(0, 0, 0)
-  for i, j in ipairs(layers.list) do
-    if j.img and j.texture then
-      j.img:texturize()
-    end
-    if j.bg and j.bg.img and j.bg.texture then
-      j.bg.img:texturize()
-    end
-    if j.visible then
-      if j.bg and j.bg.img and j.bg.visible then
-        screen:draw(j.bg.img, j.bg.x, j.bg.y, j.bg.alpha)
-      end
-      if j.img then
---print('drawing: ', j.name)
-        screen:draw(j.img, j.x or 0, j.y or 0, j.alpha)
-      end
-    end
-  end
+  screen:clear()
+  layers.draw()
   screen:swap()
---print('TIME:', sw and sw.time)
+--print('DRAW TIME:', sw and sw.time)
+--print('end draw\n')
 end
 
 -- Execute
 
-window:show()
-screen:map2d(0, conf.frame_w, 0, conf.frame_h)
-screen:enable_alpha_blending()
+--window:show()
+--screen:map2d(0, conf.frame_w, 0, conf.frame_h)
+--screen:enable_alpha_blending()
 
 counts = { }
 total = 0
@@ -254,38 +228,49 @@ for i = 1, 10 do
   total = total + 1
 end
 sw = lev.stop_watch()
-draw_timer = system:clock(60)
+draw_timer = lev.clock(conf.fps)
 draw_timer.on_tick = function()
---  table.insert(counts, sw.time)
---  total = total + sw.time - table.remove(counts, 1)
---  sw:start()
---  print('FPS: ', #counts / total)
---  print('DRAW')
-  collectgarbage()
-  screen.redraw()
+  kanaf.request_redraw = true
 end
 
-proc_timer = system:timer(10)
+proc_timer = lev.timer(20)
 proc_timer.on_tick = function()
+--  if sw then sw:start() end
+--  print('CURRENT FILE', kanaf.current.filename)
 --  print('PROC')
   kanaf.proc_next()
+--  print('PROCCESS TIME: ', sw and sw.time)
 end
 
-window.on_wheel = function(e)
---  print('wheel', e.x, e.y)
+screen.on_wheel = function(e)
+  if sw then sw:start() end
+--  print('WHEEL', e.x, e.y, e.z, e.dx, e.dy, e.dz)
   if e.y > 0 and kanaf.current.on_wheel_up then
     kanaf.current.on_wheel_up()
+    kanaf.proc_next()
   elseif e.y < 0 and kanaf.current.on_wheel_down then
     kanaf.current.on_wheel_down()
     kanaf.proc_next()
   end
+--  print('WHEEL PROCESS:', sw and sw.time)
 end
 
---system.on_quit = function()
---  print('ONQUIT')
---  return false
---end
+system.on_quit = function()
+  print('ONQUIT')
+  return false
+end
 
+system.on_tick = function()
+  if kanaf.request_redraw then
+    kanaf.request_redraw = false
+--    print('START REDRAW')
+    screen.redraw()
+--    print('END REDRAW\n')
+  end
+  collectgarbage()
+end
+
+--screen:set_full_screen(true)
 system:run()
 
 kanaf.exit()

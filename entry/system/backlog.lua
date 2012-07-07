@@ -1,4 +1,5 @@
 require 'lev.image'
+lev.require 'system/layers'
 
 backlog = backlog or { }
 backlog.logmsgs = { }
@@ -7,6 +8,11 @@ backlog.interval_y = 10
 
 function backlog.init()
   kanaf.history = { '' }
+  layers.create('text.backlog.print')
+  backlog.bg = layers.lookup['text.backlog']
+  backlog.bg.visible = false
+  backlog.fg = layers.lookup['text.backlog.print']
+  backlog.fg.img = lev.map()
 end
 
 function backlog.add(ch)
@@ -16,14 +22,15 @@ function backlog.add(ch)
 end
 
 function backlog.fill_message(index)
+--  if sw then sw:start() end
   if not kanaf.history[index] then return false end
 
   if not backlog.logmsgs[index] then
     local msg = { }
     backlog.logmsgs[index] = msg
-    msg.img = lev.image.layout(conf.backlog_w or 640)
+    msg.img = lev.layout(conf.backlog_w or 640)
     msg.x = conf.backlog_x or 0
-    local str = lev.string.unicode(kanaf.history[index])
+    local str = lev.ustring(kanaf.history[index])
     while true do
       local ch = tostring(str:index(0))
 --print('CH:', ch)
@@ -36,8 +43,17 @@ function backlog.fill_message(index)
         local found = str:find(']')
         if not found then break end
 --print('FOUND:', found)
-        tag = tostring(str:sub(1, found - 1))
+        local tag = tostring(str:sub(1, found - 1))
 --print('TAG:', tag)
+        local tag_name, params = kanaf.parse_tag(tag)
+--print('TAG NAME:', tag_name, params)
+        if tag_name == 'print' then
+          if params.ruby then
+            msg.img:reserve_word(params.text, params.ruby)
+          else
+            msg.img:reserve_word(params.text)
+          end
+        end
         str = str:sub(found + 1)
       else
         msg.img:reserve_word(ch)
@@ -46,6 +62,7 @@ function backlog.fill_message(index)
     end
     msg.img:complete()
   end
+--  print('BACKLOG FILL MESSAGE: ', sw and sw.time)
 end
 
 function backlog.get_end()
@@ -69,8 +86,8 @@ end
 
 function backlog.hide()
   backlog.logmsgs = { }
-  if layers.lookup.backlog then
-    layers.lookup.backlog.visible = false
+  if backlog.bg then
+    backlog.bg.visible = false
   end
 end
 
@@ -114,10 +131,11 @@ function backlog.seek_prev()
 end
 
 function backlog.show()
+--  if sw then sw:start() end
   local h = 0
   local y = conf.backlog_y or 0
 
-  local img = layers.lookup.backlog.img
+  local img = backlog.fg.img
   img:clear()
   for i = backlog.view_index, #kanaf.history do
     if not backlog.logmsgs[i] then
@@ -131,7 +149,9 @@ function backlog.show()
       h = h + msg.img.h + backlog.interval_y
     end
   end
-  layers.lookup.backlog.visible = true
-  layers.set_top('backlog')
+  backlog.fg.visible = true
+  backlog.bg.visible = true
+  layers.set_top('text.backlog')
+--  print('BACKLOG SHOW :', sw and sw.time)
 end
 

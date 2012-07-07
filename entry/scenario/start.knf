@@ -9,26 +9,17 @@
 
 #menu
 // ゲームタイトル画面
-[map layer='title' create]
-[map layer='title' image='top']
-
-[map
-  layer='title' image='menu_start' hover='menu_start_hover' cx=-120 by=-130
-  jump='#start' hover_se='se_hover' lclick_se='se_yes'
-]
-[map
-  layer='title' image='menu_load' hover='menu_load_hover' cx=120 by=-130
-  call='on_load#sub_load' hover_se='se_hover' lclick_se='se_yes'
-]
-[map
-  layer='title' image='menu_config' hover='menu_config_hover' cx=-120 by=-50
-  call='on_config#sub_config' hover_se='se_hover' lclick_se='se_yes'
-]
-[map
-  layer='title' image='menu_exit' hover='menu_exit_hover' cx=120 by=-50
-  call='on_quit#sub_quit' hover_se='se_hover'
-]
-[map layer='title' show]
+[map layer='top.title' create activate hide]
+[map image='top']
+[map image='menu_start' hover='menu_start_hover' cx=-120 by=-130
+ jump='#start' hover_se='se_hover' lclick_se='se_yes']
+[map image='menu_load' hover='menu_load_hover' cx=120 by=-130
+ call='on_load#sub_load' hover_se='se_hover' lclick_se='se_yes']
+[map image='menu_config' hover='menu_config_hover' cx=-120 by=-50
+ call='on_config#sub_config' hover_se='se_hover' lclick_se='se_yes']
+[map image='menu_exit' hover='menu_exit_hover' cx=120 by=-50
+ call='on_quit#sub_quit' hover_se='se_hover']
+[map show]
 [s]
 
 #start
@@ -36,7 +27,7 @@
 [set event='on_right_down' call='on_right#sub_right']
 [set event='on_wheel_down' call='on_wheel#sub_wheel_down' lock]
 [set event='on_wheel_up'   call='on_wheel#sub_wheel_up' lock]
-[map layer='title' delete]
-[msg layer='message' activate]
+[map layer='top.title' delete]
+[msg show]
 [jump to='000#game_start']
 

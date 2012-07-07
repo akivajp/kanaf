@@ -1,10 +1,12 @@
 #game_start | ゲーム開始
 [logging on]
+[image layer='fg.a' create hide]
+[image layer='fg.b' create hide]
 
-[image layer='1' src='fg_aqua001' visible=true by=0 cx=0]
+[image layer='fg.a' src='fg_aqua001' show by=0 cx=0]
 【変な人】[r]
 やぁ、はじめまして。[r]
-スクリプトシステム[font color='red']Kanaf[font reset]の開発をしている[font color='red']Akiva[font reset]と申します。[p][cm]
+スクリプトシステム[font color='red'][print text='Kanaf' ruby='カナフ'][font reset]の開発をしている[font color='red']Akiva[font reset]と申します。[p][cm]
 
 [r]
 この度は、機能紹介デモをダウンロード頂き、まことにありがとうございます。[r]
@@ -17,13 +19,13 @@
 素材として用意したグラフィックがショボショボなあたり、予めご了承下さいませ。_(._.)_[p][cm]
 
 #outline|概要
-[image layer='1' src='fg_aqua001' by=0 cx=0 visible]
+[image layer='fg.a' src='fg_aqua001' by=0 cx=0 create show]
 
 【Akiva】[r]
 まず根本的なところからいきましょう。[p][cm]
 
-[image layer='1' src='fg_aqua001'  by=0 cx=-100 visible]
-[image layer='2' src='fg_green001' by=0 cx=100  visible]
+[image layer='fg.a' src='fg_aqua001'  by=0 cx=-100 create show]
+[image layer='fg.b' src='fg_green001' by=0 cx=100  create show]
 
 【謎の質問者】[r]
 [font bigger][font bigger]
@@ -102,8 +104,8 @@ Kanafは既にWindowsファミリーの他に、Mac OS XやLinuxでのテスト�
 急に声(フォント)が小さくなりましたね。[p][cm]
 
 #requirements|何が必要?
-[image layer='1' src='fg_aqua001' visible=true by=0 cx=-100]
-[image layer='2' src='fg_green001' visible=true by=0 cx=100]
+[image layer='fg.a' src='fg_aqua001' show by=0 cx=-100 create]
+[image layer='fg.b' src='fg_green001' show by=0 cx=100 create]
 
 【Akiva】[r]
 それじゃぁもっと具体的な話に入っていきましょう。[p][cm]
@@ -140,8 +142,8 @@ Kanafは画像形式として、BMP、PNG、GIF、JPEG、TGAなどの読み込�
 
 #tags|主要タグ
 [image layer='bg' src='bg002' visible=true]
-[image layer='1' src='fg_aqua001' visible=true by=0 cx=-80 alpha=200]
-[image layer='2' src='fg_green001' visible=true by=0 cx=80 alpha=200]
+[image layer='fg.a' src='fg_aqua001' show by=0 cx=-80 alpha=200 create]
+[image layer='fg.b' src='fg_green001' show by=0 cx=80 alpha=200 create]
 
 【Akiva】[r]
 もうめんどいので主要なタグ紹介をします。[p][cm]
@@ -152,14 +154,10 @@ Kanafは画像形式として、BMP、PNG、GIF、JPEG、TGAなどの読み込�
 【Akiva】[r]
 書きかけ(吐血)[p][cm]
 
-[select][cm]
-[font bigger=true]
+[select start][cm]
 どうする?[r]
-[r]
-・[link text='選択肢1' goto='#select1'][r]
-[r]
-・[link text='選択肢2' goto='#select2'][r]
-[font reset=true]
+[item text='選択肢1' goto='#select1']
+[item text='選択肢2' goto='#select2']
 [s]
 
 #select1
@@ -173,6 +171,7 @@ Kanafは画像形式として、BMP、PNG、GIF、JPEG、TGAなどの読み込�
 [jump to='#common']
 
 #common
-共通メッセージ
+共通メッセージ[r]
+[anchor text="リンクテスト" href="http://kanaf.googlecode.com"]
 [s]
 
