@@ -34,20 +34,19 @@ function kanaf.call(target, args)
   if not filename then
     filename = current.filename or conf.first_load
   end
-  local found = lev.package.resolve(filename)
+  local infile = lev.package.resolve(filename)
               or lev.package.resolve(filename .. '.knf')
               or lev.package.resolve(filename .. '.txt')
-  if not found then
+  if not infile then
     kanaf.warning('Neither "%s.knf" nor "%s.txt" is not found.', filename, filename)
     return false
   end
 
-  local infile = io.open(tostring(found), 'r')
---  local infile = lev.fs.open(tostring(found), 'r')
-  if not infile then
-    kanaf.warning("can't open the file \"%s\".", tostring(found))
-    return false
-  end
+--  local infile = io.open(tostring(found), 'r')
+--  if not infile then
+--    kanaf.warning("can't open the file \"%s\".", tostring(found))
+--    return false
+--  end
   local content = infile:read('*a')
   local count = 0
 --  if target then
@@ -157,6 +156,8 @@ function kanaf.init()
   layers.select.init()
   kanaf.logging = false
   kanaf.key_pressed = false
+  kanaf.wait_timer = lev.stop_watch()
+  kanaf.wait_until = 0
 
   -- tag parser definition
   local parser = lev.string.compiler()
@@ -174,6 +175,7 @@ function kanaf.init()
   kanaf.current = { }
   kanaf.current.buffer = lev.string.create()
   current = kanaf.current
+  current.bufname = 'InitProc'
   current.line = 1
   current.pos = 1
   current.args = args
@@ -194,24 +196,19 @@ function kanaf.load_scenario(target)
   if not filename then
     filename = current.filename or conf.first_load
   end
-  local found = lev.package.resolve(filename)
+  local infile = lev.package.resolve(filename)
               or lev.package.resolve(filename .. '.knf')
               or lev.package.resolve(filename .. '.txt')
-  if not found then
---    local msg =
---      string.format('warning at %s : Neither "%s.knf" nor "%s.txt" is not found.',
---                    kanaf.get_pos(), filename, filename)
---    lev.debug.print(msg)
+  if not infile then
     kanaf.warning('Neigher "%s.knf" nor "%s.txt" is not found.', filename, filename)
     return false
   end
 
-  local infile = io.open(tostring(found), 'r')
---  local infile = lev.fs.open(tostring(found), 'r')
-  if not infile then
-    kanaf.warning('can\t open the file "%s".', tostring(found))
-    return false
-  end
+--  local infile = io.open(tostring(found), 'r')
+--  if not infile then
+--    kanaf.warning('can\'t open the file "%s".', tostring(found))
+--    return false
+--  end
   local content = infile:read('*a')
   local count = 0
   if label then
@@ -256,6 +253,9 @@ function kanaf.load_log(id)
   -- status resuming before the loading
   kanaf.current = last_status
   current = last_status
+  -- clear some config flags
+  conf.autoskip = false
+  conf.autoread = false
   -- loading
   layers.hide_sub('fg')
   kanaf.load_scenario(log.filename .. '#' .. log.label)
@@ -271,6 +271,12 @@ function kanaf.load_system()
   end
   sys.play_count = (sys.play_count or 0) + 1
   sys.passed_labels = sys.passed_labels or { }
+end
+
+function kanaf.on_double_click(x, y)
+  conf.autoskip = false
+  conf.autoread = false
+  layers.lookup['top.wait'].visible = false
 end
 
 -- extract the tag and parse it
@@ -357,7 +363,7 @@ function kanaf.proc_next()
     while current.status == 'continue' and kanaf.skip_once do
       kanaf.proc_token()
     end
-    if kanaf.skip_auto and log.label and
+    if conf.autoskip and log.label and
        sys.passed_labels[log.filename..'#'..log.label] then
 --print('AUTO SKIP!')
       kanaf.skip_once = true
@@ -462,7 +468,8 @@ function kanaf.proc_token()
     else
       current.new_line = false
       local auto_fill = true
-      if ch == '、' or ch == '。' then
+      if lev.util.find_member(conf.no_filling, ch) then
+--print('NO FILL!')
         auto_fill = false
       end
       message.reserve_word(ch, auto_fill)
@@ -636,7 +643,7 @@ function kanaf.wait()
     return
   end
 
-  if tags.wait_timer.time < tags.wait_until then
+  if kanaf.wait_timer.time < kanaf.wait_until then
     current.status = 'wait'
   else
     current.status = 'continue'
@@ -647,15 +654,29 @@ function kanaf.wait_key()
   if kanaf.skip_mode then
     kanaf.key_pressed = true
   end
-  if kanaf.skip_auto and log.label and
+  if conf.autoskip and log.label and
      sys.passed_labels[log.filename..'#'..log.label] then
     kanaf.key_pressed = true
   end
   if kanaf.key_pressed then
     layers.lookup['top.wait_line'].visible = false
     layers.lookup['top.wait_page'].visible = false
+    layers.lookup['top.wait'].visible = false
     kanaf.key_pressed = false
     current.status = 'continue'
+  end
+  if conf.autoread then
+    layers.lookup['top.wait'].visible = true
+    layers.lookup['top.wait_line'].visible = false
+    layers.lookup['top.wait_page'].visible = false
+--print('TIME, UNTIL:', kanaf.wait_timer.time, kanaf.wait_until)
+    if kanaf.wait_timer.time >= kanaf.wait_until then
+      layers.lookup['top.wait_line'].visible = false
+      layers.lookup['top.wait_page'].visible = false
+      layers.lookup['top.wait'].visible = false
+      kanaf.key_pressed = false
+      current.status = 'continue'
+    end
   end
 end
 

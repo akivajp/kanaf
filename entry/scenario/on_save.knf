@@ -5,7 +5,7 @@
 #sub_save
 // セーブ画面を呼び出す
 [set event="on_right_down" jump="#save_end"]
-[map layer="top.save" create show activate top]
+[map layer="top.save" create show activate top block]
 [map image="bg_save" cx=0 cy=0 alpha=200]
 [map image="menu_prev" hover_image="menu_prev_hover"
  rx=-50 y=30 jump="#save_end"]
@@ -47,7 +47,7 @@
 
 #sub_save_dialog
 [set event="on_right_down" jump="#menu_no"]
-[map layer="top.dialog" create show activate]
+[map layer="top.dialog" create show activate block]
 [map image="bg_dialog" cx=0 cy=0 alpha=200]
 [map image="menu_on_save" cx=0 cy=-75]
 [map image="menu_yes" hover_image="menu_yes_hover"

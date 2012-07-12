@@ -3,6 +3,7 @@
 [image layer='fg.a' create hide]
 [image layer='fg.b' create hide]
 
+[image layer='bg' src='bg003' show]
 [image layer='fg.a' src='fg_aqua001' show by=0 cx=0]
 【変な人】[r]
 やぁ、はじめまして。[r]

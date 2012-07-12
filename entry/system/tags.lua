@@ -5,8 +5,6 @@ require 'lev.util'
 
 tags = tags or { }
 
-tags.wait_timer = lev.stop_watch()
-tags.wait_until = 0
 tags.wait_slot = 0
 tags.controls = { 'else', 'elseif', 'endif', 'if' }
 tags.macros = { }
@@ -498,6 +496,7 @@ function tags.map(param)
   local hover_se = param.hover_se or param.hover_sound
   local lclick_se = param.lclick_se or param.lclick_sound
   local str_on_lclick = param.on_lclick or param.on_left_click
+  local block = get_boolean(param.block, param.blocking)
 
   if activate then
     layers.active_map = name
@@ -527,6 +526,10 @@ function tags.map(param)
 
   if above then
     layers.set_top(name)
+  end
+
+  if block then
+    layer.blocking = true
   end
 
   if show or hide == false then
@@ -710,13 +713,15 @@ function tags.msg(param)
     if all then
       message.show_all()
     else
-      layer.visible = true
+      message.show()
+--      layer.visible = true
     end
   elseif hide or show == false then
     if all then
       message.hide_all()
     else
-      layer.visible = false
+      message.hide()
+--      layer.visible = false
     end
   end
 
@@ -735,6 +740,10 @@ function tags.p(param)
   kanaf.key_pressed = false
   kanaf.current.status = 'wait_key'
   layers.lookup['top.wait_page'].visible = true
+  kanaf.wait_timer:start()
+  local count = #lev.ustring(kanaf.history[#kanaf.history])
+--print('HISTORY COUNT:', count)
+  kanaf.wait_until = conf.autoread_time_base + count * conf.autoread_time_factor
   kanaf.request_redraw = true
 end
 
@@ -891,11 +900,11 @@ function tags.skip(param)
   end
 
   if auto == true then
-    kanaf.skip_auto = true
+    conf.autoskip = true
   elseif auto == false then
-    kanaf.skip_auto = false
+    conf.autoskip = false
   elseif toggle then
-    kanaf.skip_auto = not(kanaf.skip_auto)
+    conf.autoskip = not(conf.autoskip)
   end
 end
 
@@ -990,8 +999,8 @@ end
 function tags.wait(param)
   local delay = get_number(param.time, param.delay, param.duration)
   if delay then
-    tags.wait_timer:start(0)
-    tags.wait_until = delay
+    kanaf.wait_timer:start(0)
+    kanaf.wait_until = delay
     kanaf.current.status = 'wait'
   else
   end

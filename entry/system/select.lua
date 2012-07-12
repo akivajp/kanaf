@@ -23,7 +23,7 @@ function select.init()
 end
 
 function select.add_item(text, label)
-print('ADDING', text, label)
+--print('ADDING', text, label)
   select.items = select.items or { }
   local item = { }
   item.text = text
@@ -43,7 +43,7 @@ function select.hide()
 end
 
 function select.show()
-print('SHOW SELECT')
+--print('SHOW SELECT')
   if not select.items then return false end
   local hspace = select.h / (#select.items + 1)
   local y = - select.item_base.h / 2
@@ -70,6 +70,6 @@ print('SHOW SELECT')
   end
   select.fg.visible = true
   select.bg.visible = true
-print('END SHOW SELECT')
+--print('END SHOW SELECT')
 end
 

@@ -2,60 +2,75 @@
 // 右クリック処理
 //
 
-#sub_right
+#start_menu
 // 右クリック処理開始
 // スクリーンショットを撮る
 //[debug msg='take screen shot']
 [screenshot]
 //[debug msg='end take screen shot']
 // メイン処理へ
-[jump to="#sub_right_menu"]
+[jump to="#sub_menu"]
 
-#sub_right_menu
+#sub_menu
 // メイン処理開始
 // 再度右クリックされた時に終了する設定
-[set event='on_right_down' jump='#right_menu_end']
+[set event='on_right_down' jump='#menu_end']
 // 初回起動時にセットアップ画面へ
-//[call target="#sub_right_menu_setup"]
-[call target="#sub_right_menu_setup" cond=(not layers.lookup['top.right_menu'])]
+[call target="#sub_menu_setup"]
 // メッセージ画面非表示
 [msg hide]
 // 右クリックメニュー表示
-[map layer="top.right_menu" show above]
+[map layer="top.menu" show above]
 [s]
 
-#right_menu_end
+#menu_end
 // 右クリックメニュー非表示
-[map layer="top.right_menu" hide]
+[map layer="top.menu" hide]
 // メッセージ画面表示
 [msg show]
 [return]
 
-#sub_right_menu_setup
+#sub_menu_setup
 // メニューレイアウト & 設定保存
 //[debug msg='setting up']
-[map layer="top.right_menu" create clear activate]
+// 左側
+[map layer="top.menu" create clear activate block]
 [map image="bg_side" cx=0 cy=0 alpha=200]
 [map image="menu_save" hover_image="menu_save_hover"
- rx=(-80) y=100 call="on_save#sub_save"]
+ lx=80 y=100 call="on_save#sub_save"]
 [map image="menu_load" hover_image="menu_load_hover"
- rx=(-80) y=160 call="on_load#sub_load"]
+ lx=80 y=160 call="on_load#sub_load"]
 [map image="menu_config" hover_image="menu_config_hover"
- rx=(-80) y=220 call="on_config#sub_config"]
-[if cond=(kanaf.skip_auto)]
+ lx=80 y=220 call="on_config#sub_config"]
+ // 右側
+[if cond=(conf.autoskip)]
   [map image="item_autoskip" hover_image="menu_disable_hover"
-   rx=(-80) y=280 jump="#toggle_autoskip"]
-  [map image="icon_check" rx=(-60) y=280]
+   rx=(-80) y=100 jump="#toggle_autoskip"]
+  [map image="icon_check" rx=(-60) y=100]
 [else]
   [map image="item_autoskip" hover_image="menu_enable_hover"
-   rx=(-80) y=280 jump="#toggle_autoskip"]
+   rx=(-80) y=100 jump="#toggle_autoskip"]
+[endif]
+[if cond=(conf.autoread)]
+  [map image="item_autoread" hover_image="menu_disable_hover"
+   rx=(-80) y=160 jump="#toggle_autoread"]
+  [map image="icon_check" rx=(-60) y=160]
+[else]
+  [map image="item_autoread" hover_image="menu_enable_hover"
+   rx=(-80) y=160 jump="#toggle_autoread"]
 [endif]
 //[debug msg='end setting up']
 [return]
 
 #toggle_autoskip
 [[
-  kanaf.skip_auto = not(kanaf.skip_auto)
+  conf.autoskip = not(conf.autoskip)
 ]]
-[jump to="#right_menu_end"]
+[jump to="#sub_menu"]
+
+#toggle_autoread
+[[
+  conf.autoread = not(conf.autoread)
+]]
+[jump to="#sub_menu"]
 

@@ -20,7 +20,7 @@ system = lev.system()
 lev.require 'config'
 
 -- Initialization of Important instances
-mixer = system:mixer()
+mixer = lev.mixer()
 screen = lev.screen { caption = conf.caption,
                       w = conf.frame_w,
                       h = conf.frame_h }
@@ -45,6 +45,7 @@ lev.require 'system/fonts'
 lev.require 'system/colors'
 lev.require 'system/kanaf'
 lev.require 'system/layers'
+lev.require 'system/media'
 lev.require 'system/message'
 lev.require 'system/select'
 
@@ -79,10 +80,11 @@ layers.lookup['text.message.print'].x =
 layers.lookup['text.message.print'].y =
   conf.message_y + conf.message_margin
 layers.lookup['text.message'].img =
-  lev.bitmap(lev.package.resolve('message_bg.png'))
+  media.find_image('message_bg')
 layers.lookup['text.message.print'].img.font.size = conf.font_size
 layers.lookup['text.message.print'].img.fg_color = conf.fg_color
 message.activate('text.message.print')
+layers.lookup['text.message'].visible = false
 -- select layer ( sub layer of text )
 --layers.create('text.select.print')
 --layers.lookup['text.select.print'].img =
@@ -98,25 +100,32 @@ message.activate('text.message.print')
 --layers.lookup['text.select'].visible = false
 -- wait line icon
 layers.create('top.wait_line')
-local icon_path = lev.package.resolve(conf.wait_line_icon)
-if not icon_path then
-  error(string.format('%s is not found'), conf.wait_line_icon)
-end
-layers.lookup['top.wait_line'].img = lev.bitmap(icon_path)
+layers.lookup['top.wait_line'].img =
+  media.find_image(conf.wait_line_icon)
 layers.lookup['top.wait_line'].x = 590
 layers.lookup['top.wait_line'].y = 440
+layers.lookup['top.wait_line'].visible = false
 -- wait page icon
 layers.create('top.wait_page')
-local icon_path = lev.package.resolve(conf.wait_page_icon)
-if not icon_path then
-  error(string.format('%s is not found'), conf.wait_page_icon)
-end
-layers.lookup['top.wait_page'].img = lev.bitmap(icon_path)
+layers.lookup['top.wait_page'].img =
+  media.find_image(conf.wait_page_icon)
 layers.lookup['top.wait_page'].x = 590
 layers.lookup['top.wait_page'].y = 440
+layers.lookup['top.wait_page'].visible = false
+-- wait icon
+layers.create('top.wait')
+layers.lookup['top.wait'].img = media.build_animation('icon_wait_', 0.5)
+layers.lookup['top.wait'].x = 590
+layers.lookup['top.wait'].y = 430
+layers.lookup['top.wait'].visible = false
 
 -- Control Init
 kanaf.init()
+
+-- Last Events
+events = { }
+
+-- Events
 
 screen.on_close = function()
 print('ON CLOSE')
@@ -136,6 +145,8 @@ screen.on_key_down = function(e)
 --    system:quit()
   elseif e.key == 'lctrl' then
     kanaf.skip_mode = true
+  elseif e.key == 'd' then
+    system:start_debug()
   elseif e.key == 'q' then
     system:quit(true)
   elseif e.key == 'rctrl' then
@@ -157,31 +168,49 @@ screen.on_key_up = function(e)
 end
 
 screen.on_left_down = function(e)
---print('ON LEFT DOWN', e.x, e.y)
+print('ON LEFT DOWN', e.x, e.y, e.time)
+  local last = events.last_left_down
+  events.last_left_down = e.clone
+
+  if last then
+    local duration = e.time - last.time
+--print('DOWN DURATION:', duration)
+    if duration < 0.2 then
+print('DOUBLE CLICK!')
+      kanaf.on_double_click(x, y)
+    end
+  end
+
   if kanaf.current.on_left_down then
     kanaf.current.on_left_down()
   else
-    -- click waiting process
-    if kanaf.current.status == 'wait_key' then
-      kanaf.key_pressed = true
-    end
-    if kanaf.current.status == 'continue' then
---      if message.active.visible then
-        kanaf.skip_once = true
---      end
-    end
-
-    -- clickable images' process
-    local lay = layers.get_top_visible()
-    if lay and lay.img then
-      if lay.img.type_name == 'lev.layout' then
-        lay.img:on_left_click(e.x - lay.x, e.y - lay.y)
-      elseif lay.img.type_name == 'lev.map' then
---print('LEFT DOWN MAP', e.x, e.y)
-        lay.img:on_left_click(e.x - lay.x, e.y - lay.y)
+    local done = layers.on_left_down(e.x, e.y)
+    if not done then
+      -- click waiting process
+      if kanaf.current.status == 'wait_key' then
+        kanaf.key_pressed = true
+      end
+      if kanaf.current.status == 'continue' then
+        conf.autoskip = false
+  --      if message.active.visible then
+          kanaf.skip_once = true
+  --      end
       end
     end
   end
+end
+
+screen.on_left_up = function(e)
+  print('ON LEFT UP', e.x, e.y, e.time)
+  local down = events.last_left_down
+--  print('LAST LEFT DOWN', down.x, down.y, down.time)
+--  print('TERM:', e.time - down.time)
+  local duration = e.time - down.time
+--  if duration > 0.1 then
+--    print('SINGLE CLICK!')
+--  end
+
+  layers.on_left_up(e.x, e.y)
 end
 
 screen.on_right_down = function(e)
@@ -191,16 +220,13 @@ screen.on_right_down = function(e)
 end
 
 screen.on_motion = function(e)
---print('ON MOTION', e.x, e.y)
-  -- clickable images' process
-  local lay = layers.get_top_visible()
---print('TOP', lay.name)
-  if lay and lay.img then
-    if lay.img.type_name == 'lev.layout' then
-      lay.img:on_hover(e.x - lay.x, e.y - lay.y)
-    elseif lay.img.type_name == 'lev.map' then
-      lay.img:on_hover(e.x - lay.x, e.y - lay.y)
-    end
+--print('ON MOTION', e.x, e.y, e.left_is_down)
+  if e.left_is_down
+  then
+    -- left dragging
+  else
+    -- free motions
+    layers.on_motion(e.x, e.y)
   end
 end
 
@@ -233,7 +259,7 @@ draw_timer.on_tick = function()
   kanaf.request_redraw = true
 end
 
-proc_timer = lev.timer(20)
+proc_timer = lev.timer(20 / 1000)
 proc_timer.on_tick = function()
 --  if sw then sw:start() end
 --  print('CURRENT FILE', kanaf.current.filename)
@@ -260,7 +286,7 @@ system.on_quit = function()
   return false
 end
 
-system.on_tick = function()
+system.on_idle = function()
   if kanaf.request_redraw then
     kanaf.request_redraw = false
 --    print('START REDRAW')

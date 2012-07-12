@@ -106,6 +106,25 @@ function layers.draw(lay, x, y)
   end
 end
 
+function layers.get_next_visible(lay)
+  if not lay then return nil end
+  if lay == layers.root then return nil end
+
+  local parent = lay.parent
+  local found = false
+  for i = #parent.children,1,-1 do
+    local j = parent.children[i]
+    if found then
+      local next_top = layers.get_top_visible(j)
+      if next_top then return next_top end
+    end
+    if lay == j then
+      found = true
+    end
+  end
+  return parent
+end
+
 function layers.get_top_visible(lay)
   lay = lay or layers.root
   if not lay.visible then return nil end
@@ -134,6 +153,65 @@ function layers.hide_sub(lay)
   end
 end
 
+function layers.on_left_down(x, y)
+ -- clickable images' process
+ local lay = layers.get_top_visible()
+ while lay do
+--print('TOP', lay.name)
+   local done = false
+   if lay.img then
+     if lay.img.type_name == 'lev.layout' then
+--print('LEFT DOWN LAYER', x, y)
+       done = lay.img:on_left_down(x - lay.x, y - lay.y)
+     elseif lay.img.type_name == 'lev.map' then
+--print('LEFT DOWN MAP', x, y)
+       done = lay.img:on_left_down(x - lay.x, y - lay.y)
+     end
+   end
+   if done then return true end
+   if lay.blocking then break end
+   lay = layers.get_next_visible(lay)
+ end
+ return false
+end
+
+function layers.on_left_up(x, y)
+ -- clickable images' process
+ local lay = layers.get_top_visible()
+ while lay do
+   local done = false
+   if lay.img then
+     if lay.img.type_name == 'lev.layout' then
+       done = lay.img:on_left_up(x - lay.x, y - lay.y)
+     elseif lay.img.type_name == 'lev.map' then
+       done = lay.img:on_left_up(x - lay.x, y - lay.y)
+     end
+   end
+   if done then break end
+   if lay.blocking then break end
+   lay = layers.get_next_visible(lay)
+ end
+end
+
+function layers.on_motion(x, y)
+-- clickable images' process
+  local lay = layers.get_top_visible()
+  while lay do 
+--print('TOP', lay.name)
+    local done = false
+    if lay.img then
+      if lay.img.type_name == 'lev.layout' then
+        done = lay.img:on_motion(x - lay.x, y - lay.y)
+      elseif lay.img.type_name == 'lev.map' then
+        done = lay.img:on_motion(x - lay.x, y - lay.y)
+      end
+    end
+    if done then break end
+    if lay.blocking then break end
+    lay = layers.get_next_visible(lay)
+  end
+end
+
 function layers.set_top(name)
   local lay = layers.lookup[name]
   if not lay then return false end
@@ -148,14 +226,6 @@ function layers.set_top(name)
   end
   table.insert(parent.children, lay)
   return true
-
---  for i, j in ipairs(layers.list) do
---    if j == layer then
---      table.remove(layers.list, i)
---      break
---    end
---  end
---  table.insert(layers.list, layer)
 end
 
 --function layers.set_bg(img, t)

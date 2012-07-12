@@ -7,9 +7,13 @@
 // [debug enable]
 [set event='on_quit' call='on_quit#sub_quit']
 
+[map layer='top.menu_button' create active show]
+[map image='item_menu_inactive' hover='item_menu'
+ lx=10 y=10 call='on_menu' hover_se='se_hover']
+
 #menu
 // ゲームタイトル画面
-[map layer='top.title' create activate hide]
+[map layer='top.title' create activate hide block]
 [map image='top']
 [map image='menu_start' hover='menu_start_hover' cx=-120 by=-130
  jump='#start' hover_se='se_hover' lclick_se='se_yes']
@@ -24,7 +28,7 @@
 
 #start
 // ゲーム開始
-[set event='on_right_down' call='on_right#sub_right']
+[set event='on_right_down' call='on_menu']
 [set event='on_wheel_down' call='on_wheel#sub_wheel_down' lock]
 [set event='on_wheel_up'   call='on_wheel#sub_wheel_up' lock]
 [map layer='top.title' delete]

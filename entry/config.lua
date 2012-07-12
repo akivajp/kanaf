@@ -35,3 +35,23 @@ conf.select_item_hover = 'select_item_hover.png'
 conf.wait_line_icon = 'wait_line.png'
 conf.wait_page_icon = 'wait_page.png'
 
+-- auto mode flags
+conf.autoskip = false
+
+-- no filling
+conf.no_filling = { }
+table.insert(conf.no_filling, ',')
+table.insert(conf.no_filling, '.')
+table.insert(conf.no_filling, '!')
+table.insert(conf.no_filling, '?')
+table.insert(conf.no_filling, '、')
+table.insert(conf.no_filling, '。')
+table.insert(conf.no_filling, '！')
+table.insert(conf.no_filling, '？')
+
+-- auto read settings
+-- waiting time = time_base + (text_length * time_factor)
+conf.autoread = false
+conf.autoread_time_base = 1
+conf.autoread_time_factor = 0.01
+

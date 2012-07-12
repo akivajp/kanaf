@@ -5,7 +5,7 @@
 #sub_load
 // ロード画面を呼び出す
 [set event="on_right_down" jump="#load_end"]
-[map layer="top.load" create activate show]
+[map layer="top.load" create activate show block]
 [map image="bg_load" cx=0 cy=0 alpha=200]
 [map image="menu_prev" hover_image="menu_prev_hover"
  rx=-50 y=30 jump="#load_end"]
@@ -46,7 +46,7 @@
 
 #sub_load_dialog
 [set event="on_right_down" jump="#menu_no"]
-[map layer="top.dialog" create activate show]
+[map layer="top.dialog" create activate show block]
 [map image="bg_dialog" cx=0 cy=0 alpha=200]
 [map image="menu_on_load" cx=0 cy=-75]
 [map image="menu_yes" hover_image="menu_yes_hover"
@@ -60,10 +60,10 @@
 // 不要なレイヤーを消去
 [map layer="top.dialog" delete]
 [map layer="top.load" delete]
-[map layer="top.right_menu" delete]
+[map layer="top.menu" delete]
 [map layer="top.title" delete]
 // イベント初期化
-[set event="on_right" call="on_right#sub_right"]
+[set event="on_right" call="on_menu"]
 [set event="on_wheel_down" call="on_wheel#sub_wheel_down" lock]
 [set event="on_wheel_up" call="on_wheel#sub_wheel_up" lock]
 // メッセージレイヤをアクティベーション

@@ -8,11 +8,15 @@ backlog.interval_y = 10
 
 function backlog.init()
   kanaf.history = { '' }
-  layers.create('text.backlog.print')
-  backlog.bg = layers.lookup['text.backlog']
+--  layers.create('text.backlog.print')
+  layers.create('top.backlog.print')
+--  backlog.bg = layers.lookup['text.backlog']
+  backlog.bg = layers.lookup['top.backlog']
   backlog.bg.visible = false
-  backlog.fg = layers.lookup['text.backlog.print']
+--  backlog.fg = layers.lookup['text.backlog.print']
+  backlog.fg = layers.lookup['top.backlog.print']
   backlog.fg.img = lev.map()
+  backlog.fg.blocking = true
 end
 
 function backlog.add(ch)
@@ -151,7 +155,8 @@ function backlog.show()
   end
   backlog.fg.visible = true
   backlog.bg.visible = true
-  layers.set_top('text.backlog')
+--  layers.set_top('text.backlog')
+  layers.set_top('top.backlog')
 --  print('BACKLOG SHOW :', sw and sw.time)
 end
 
